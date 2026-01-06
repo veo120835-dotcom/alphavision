@@ -17,7 +17,7 @@
 ### Step 1: Create User in Supabase Dashboard (2 minutes)
 
 1. **Open Supabase Auth Dashboard**:
-   https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/auth/users
+   https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/auth/users
 
 2. **Click "Add User"** (top right)
 
@@ -35,7 +35,7 @@
 ### Step 2: Link User to Organization (1 minute)
 
 1. **Open SQL Editor**:
-   https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/sql/new
+   https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/sql/new
 
 2. **Paste this SQL** (replace USER_ID with the ID you copied):
 
@@ -89,8 +89,8 @@ VALUES ('USER_ID_HERE', 'alphavisionmethod@gmail.com', 'Alpha Vision Admin');
 
 ### Supabase Configuration ✅
 ```
-Project URL: https://ntpjmirozltlgmdawuvw.supabase.co
-Project ID: ntpjmirozltlgmdawuvw
+Project URL: https://wqdflwqepedqgbcwqqql.supabase.co
+Project ID: wqdflwqepedqgbcwqqql
 Anon Key: Configured ✅
 Database: Connected ✅
 RLS: Enabled on all tables ✅
@@ -109,7 +109,7 @@ Created: 2026-01-06 22:18:11 UTC
 ```
 Total Active: 68 functions
 Status: All ACTIVE
-Base URL: https://ntpjmirozltlgmdawuvw.supabase.co/functions/v1/
+Base URL: https://wqdflwqepedqgbcwqqql.supabase.co/functions/v1/
 
 Key Functions:
   ✅ chat - AI chat interface
@@ -217,13 +217,13 @@ Key Functions:
 
 ## 🚀 Quick Links
 
-**Supabase Dashboard**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw
+**Supabase Dashboard**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql
 
-**Create User**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/auth/users
+**Create User**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/auth/users
 
-**SQL Editor**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/sql/new
+**SQL Editor**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/sql/new
 
-**Edge Functions**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/functions
+**Edge Functions**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/functions
 
 ---
 

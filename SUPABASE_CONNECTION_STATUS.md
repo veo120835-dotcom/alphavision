@@ -10,8 +10,8 @@
 ### Database Connection ✅
 ```
 Status: CONNECTED
-Project ID: ntpjmirozltlgmdawuvw
-Project URL: https://ntpjmirozltlgmdawuvw.supabase.co
+Project ID: wqdflwqepedqgbcwqqql
+Project URL: https://wqdflwqepedqgbcwqqql.supabase.co
 Authentication: Working
 Query Execution: Working
 ```
@@ -66,7 +66,7 @@ All Triggers Active: ✅
 ```
 Total Functions: 68
 All Status: ACTIVE
-Base URL: https://ntpjmirozltlgmdawuvw.supabase.co/functions/v1/
+Base URL: https://wqdflwqepedqgbcwqqql.supabase.co/functions/v1/
 ```
 
 **Categories**:
@@ -136,9 +136,9 @@ Admin Users: 0 (need to create alphavisionmethod@gmail.com)
 
 ### Frontend Configuration ✅
 ```javascript
-VITE_SUPABASE_URL: https://ntpjmirozltlgmdawuvw.supabase.co
+VITE_SUPABASE_URL: https://wqdflwqepedqgbcwqqql.supabase.co
 VITE_SUPABASE_ANON_KEY: Configured ✅
-VITE_SUPABASE_PROJECT_ID: nxyrbbnplmqvptdxqgqn
+VITE_SUPABASE_PROJECT_ID: wqdflwqepedqgbcwqqql
 ```
 
 ### Client Configuration ✅
@@ -233,28 +233,28 @@ Status: Production Ready
 ## 🚀 DIRECT LINKS
 
 ### Supabase Dashboard
-**Main Dashboard**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw
+**Main Dashboard**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql
 
-**Auth / Users**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/auth/users
+**Auth / Users**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/auth/users
 
-**SQL Editor**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/sql/new
+**SQL Editor**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/sql/new
 
-**Database Tables**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/database/tables
+**Database Tables**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/database/tables
 
-**Edge Functions**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/functions
+**Edge Functions**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/functions
 
-**Logs**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/logs/edge-functions
+**Logs**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/logs/edge-functions
 
-**Settings**: https://supabase.com/dashboard/project/ntpjmirozltlgmdawuvw/settings/general
+**Settings**: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqql/settings/general
 
 ### API Endpoints
-**Database API**: https://ntpjmirozltlgmdawuvw.supabase.co/rest/v1/
+**Database API**: https://wqdflwqepedqgbcwqqql.supabase.co/rest/v1/
 
-**Edge Functions**: https://ntpjmirozltlgmdawuvw.supabase.co/functions/v1/
+**Edge Functions**: https://wqdflwqepedqgbcwqqql.supabase.co/functions/v1/
 
-**Auth API**: https://ntpjmirozltlgmdawuvw.supabase.co/auth/v1/
+**Auth API**: https://wqdflwqepedqgbcwqqql.supabase.co/auth/v1/
 
-**Realtime**: wss://ntpjmirozltlgmdawuvw.supabase.co/realtime/v1/
+**Realtime**: wss://wqdflwqepedqgbcwqqql.supabase.co/realtime/v1/
 
 ---
 
