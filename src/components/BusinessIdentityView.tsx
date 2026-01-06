@@ -70,12 +70,10 @@ export function BusinessIdentityView() {
       // Table doesn't exist yet - simulate locally
       const newIdentityItem: IdentityItem = {
         id: crypto.randomUUID(),
-        organization_id: organization.id,
         identity_element: newItem.element,
         title: newItem.title.trim(),
         description: newItem.description.trim() || null,
         priority: items.length + 1,
-        created_at: new Date().toISOString()
       };
       setItems(prev => [...prev, newIdentityItem]);
       toast.success("Added to identity!");

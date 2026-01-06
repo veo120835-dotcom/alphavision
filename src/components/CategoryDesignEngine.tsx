@@ -99,7 +99,7 @@ Format your response as JSON array with objects containing: oldCategory, newCate
     if (!organization?.id) return;
     
     try {
-      await supabase.from('memory_items').insert({
+      await (supabase as any).from('memory_items').insert({
         organization_id: organization.id,
         title: `Category Frame: ${frame.newCategory}`,
         type: 'category_frame',

@@ -97,14 +97,12 @@ export default function BusinessImmuneSystem() {
       // Add locally for now
       const newRuleItem: ImmuneRule = {
         id: crypto.randomUUID(),
-        organization_id: organization.id,
         rule_name: newRule.rule_name,
         rule_type: newRule.rule_type,
         conditions: {},
         action: newRule.action,
         is_active: true,
-        severity_level: 'medium',
-        created_at: new Date().toISOString()
+        times_triggered: 0
       };
       setRules(prev => [...prev, newRuleItem]);
       toast.success('Rule added');
