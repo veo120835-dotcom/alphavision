@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,107 +10,60 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Brain, 
   TrendingUp, 
-  TrendingDown, 
   Activity, 
   Zap, 
-  Target, 
   AlertTriangle,
   Play,
-  BarChart3,
-  Clock,
   DollarSign,
-  Users,
   Gauge
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOrganization } from '@/hooks/useOrganization';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Json } from '@/integrations/supabase/types';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useMockStorage, generateMockId, generateMockTimestamp } from '@/hooks/useMockStorage';
 
 interface DigitalTwin {
   id: string;
   snapshot_date: string;
-  revenue_streams: Json;
-  demand_metrics: Json;
-  capacity_metrics: Json;
-  pricing_metrics: Json;
-  burn_metrics: Json;
-  risk_factors: Json;
-  health_score: number | null;
+  revenue_streams: Array<{name: string; mrr: number; growth_rate: number}>;
+  demand_metrics: Record<string, number>;
+  capacity_metrics: Record<string, number>;
+  pricing_metrics: Record<string, number>;
+  burn_metrics: Record<string, number>;
+  risk_factors: Array<{risk: string; probability: number; impact: string}>;
+  health_score: number;
 }
 
 interface Simulation {
   id: string;
   simulation_name: string;
   scenario_type: string;
-  strategy_changes: Json;
-  projected_outcomes: Json;
-  probability_score: number | null;
+  strategy_changes: Record<string, unknown>;
+  projected_outcomes: {
+    revenue_3m?: number;
+    revenue_6m?: number;
+    revenue_12m?: number;
+    margin?: number;
+    runway_months?: number;
+  };
+  probability_score: number;
   recommended: boolean;
   simulated_at: string;
 }
 
 export default function EconomicDigitalTwin() {
   const { organization } = useOrganization();
-  const queryClient = useQueryClient();
+  const twinsKey = `digital_twins_${organization?.id || 'default'}`;
+  const simsKey = `simulations_${organization?.id || 'default'}`;
+  
+  const { data: twins, addItem: addTwin } = useMockStorage<DigitalTwin>(twinsKey, []);
+  const { data: simulations, addItem: addSimulation } = useMockStorage<Simulation>(simsKey, []);
+  
   const [showSimulation, setShowSimulation] = useState(false);
   const [newSimulation, setNewSimulation] = useState({
     simulation_name: '',
     scenario_type: 'base_case',
     strategy_changes: {}
-  });
-
-  const { data: twins = [], isLoading: twinsLoading } = useQuery({
-    queryKey: ['digital-twin', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('business_digital_twin')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('snapshot_date', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      return data as DigitalTwin[];
-    },
-    enabled: !!organization?.id
-  });
-
-  const { data: simulations = [] } = useQuery({
-    queryKey: ['simulations', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('future_simulations')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('simulated_at', { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return data as Simulation[];
-    },
-    enabled: !!organization?.id
-  });
-
-  const createSimulationMutation = useMutation({
-    mutationFn: async (sim: typeof newSimulation) => {
-      if (!organization?.id) throw new Error('No organization');
-      const latestTwin = twins[0];
-      const { error } = await supabase.from('future_simulations').insert({
-        organization_id: organization.id,
-        twin_snapshot_id: latestTwin?.id,
-        ...sim,
-        projected_outcomes: generateProjectedOutcomes(sim.scenario_type),
-        probability_score: sim.scenario_type === 'base_case' ? 70 : 
-                          sim.scenario_type === 'optimistic' ? 40 : 60
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['simulations'] });
-      setShowSimulation(false);
-      toast.success('Simulation created');
-    }
   });
 
   const generateProjectedOutcomes = (type: string) => {
@@ -124,6 +75,54 @@ export default function EconomicDigitalTwin() {
       margin: 0.4 * multiplier,
       runway_months: 12 * multiplier
     };
+  };
+
+  const createSimulation = () => {
+    if (!newSimulation.simulation_name) {
+      toast.error('Please enter a simulation name');
+      return;
+    }
+
+    const simulation: Simulation = {
+      id: generateMockId(),
+      simulation_name: newSimulation.simulation_name,
+      scenario_type: newSimulation.scenario_type,
+      strategy_changes: newSimulation.strategy_changes,
+      projected_outcomes: generateProjectedOutcomes(newSimulation.scenario_type),
+      probability_score: newSimulation.scenario_type === 'base_case' ? 70 : 
+                        newSimulation.scenario_type === 'optimistic' ? 40 : 60,
+      recommended: newSimulation.scenario_type === 'base_case',
+      simulated_at: generateMockTimestamp()
+    };
+
+    addSimulation(simulation);
+    setShowSimulation(false);
+    setNewSimulation({ simulation_name: '', scenario_type: 'base_case', strategy_changes: {} });
+    toast.success('Simulation created');
+  };
+
+  const generateSampleTwin = () => {
+    const twin: DigitalTwin = {
+      id: generateMockId(),
+      snapshot_date: generateMockTimestamp(),
+      revenue_streams: [
+        { name: 'Consulting', mrr: 15000, growth_rate: 12 },
+        { name: 'Products', mrr: 8000, growth_rate: 25 },
+        { name: 'Subscriptions', mrr: 5000, growth_rate: 8 }
+      ],
+      demand_metrics: { leads: 150, qualified: 45, pipeline_value: 125000 },
+      capacity_metrics: { utilization: 78, available_hours: 40 },
+      pricing_metrics: { avg_deal_size: 2500, win_rate: 35 },
+      burn_metrics: { monthly_burn: 12000, runway_months: 18 },
+      risk_factors: [
+        { risk: 'Single client dependency', probability: 30, impact: 'high' },
+        { risk: 'Market downturn', probability: 15, impact: 'medium' }
+      ],
+      health_score: 72
+    };
+
+    addTwin(twin);
+    toast.success('Sample twin snapshot created');
   };
 
   const latestTwin = twins[0];
@@ -141,19 +140,8 @@ export default function EconomicDigitalTwin() {
     return 'text-red-500';
   };
 
-  const getRevenueStreams = (): Array<{name: string; mrr: number; growth_rate: number}> => {
-    if (!latestTwin?.revenue_streams) return [];
-    const streams = latestTwin.revenue_streams;
-    if (Array.isArray(streams)) return streams as Array<{name: string; mrr: number; growth_rate: number}>;
-    return [];
-  };
-
-  const getRiskFactors = (): Array<{risk: string; probability: number; impact: string}> => {
-    if (!latestTwin?.risk_factors) return [];
-    const risks = latestTwin.risk_factors;
-    if (Array.isArray(risks)) return risks as Array<{risk: string; probability: number; impact: string}>;
-    return [];
-  };
+  const getRevenueStreams = () => latestTwin?.revenue_streams || [];
+  const getRiskFactors = () => latestTwin?.risk_factors || [];
 
   return (
     <div className="space-y-6">
@@ -168,42 +156,48 @@ export default function EconomicDigitalTwin() {
             Real-time simulation of your entire business economy
           </p>
         </div>
-        <Dialog open={showSimulation} onOpenChange={setShowSimulation}>
-          <DialogTrigger asChild>
-            <Button><Play className="h-4 w-4 mr-2" />Run Simulation</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Future Simulation</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Input
-                placeholder="Simulation name (e.g., 'Price increase 20%')"
-                value={newSimulation.simulation_name}
-                onChange={e => setNewSimulation({ ...newSimulation, simulation_name: e.target.value })}
-              />
-              <Select 
-                value={newSimulation.scenario_type} 
-                onValueChange={v => setNewSimulation({ ...newSimulation, scenario_type: v })}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="base_case">Base Case (Most Likely)</SelectItem>
-                  <SelectItem value="optimistic">Optimistic Scenario</SelectItem>
-                  <SelectItem value="pessimistic">Pessimistic Scenario</SelectItem>
-                  <SelectItem value="custom">Custom Scenario</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button 
-                className="w-full" 
-                onClick={() => createSimulationMutation.mutate(newSimulation)}
-                disabled={!newSimulation.simulation_name}
-              >
-                Run Simulation
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={generateSampleTwin}>
+            <Activity className="h-4 w-4 mr-2" />
+            Generate Snapshot
+          </Button>
+          <Dialog open={showSimulation} onOpenChange={setShowSimulation}>
+            <DialogTrigger asChild>
+              <Button><Play className="h-4 w-4 mr-2" />Run Simulation</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Future Simulation</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input
+                  placeholder="Simulation name (e.g., 'Price increase 20%')"
+                  value={newSimulation.simulation_name}
+                  onChange={e => setNewSimulation({ ...newSimulation, simulation_name: e.target.value })}
+                />
+                <Select 
+                  value={newSimulation.scenario_type} 
+                  onValueChange={v => setNewSimulation({ ...newSimulation, scenario_type: v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="base_case">Base Case (Most Likely)</SelectItem>
+                    <SelectItem value="optimistic">Optimistic Scenario</SelectItem>
+                    <SelectItem value="pessimistic">Pessimistic Scenario</SelectItem>
+                    <SelectItem value="custom">Custom Scenario</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  className="w-full" 
+                  onClick={createSimulation}
+                  disabled={!newSimulation.simulation_name}
+                >
+                  Run Simulation
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Health Score */}
@@ -217,6 +211,7 @@ export default function EconomicDigitalTwin() {
                 {healthScore >= 80 ? 'Excellent - Business is thriving' :
                  healthScore >= 60 ? 'Good - Minor optimizations needed' :
                  healthScore >= 40 ? 'Fair - Attention required' :
+                 twins.length === 0 ? 'No data - Generate a snapshot' :
                  'Critical - Immediate action needed'}
               </p>
             </div>
@@ -251,7 +246,7 @@ export default function EconomicDigitalTwin() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Capacity Util.</p>
-                <p className="text-2xl font-bold">78%</p>
+                <p className="text-2xl font-bold">{latestTwin?.capacity_metrics?.utilization || 0}%</p>
               </div>
               <Activity className="h-8 w-8 text-blue-500" />
             </div>
@@ -308,7 +303,11 @@ export default function EconomicDigitalTwin() {
                   </ResponsiveContainer>
                 ) : (
                   <div className="h-48 flex items-center justify-center text-muted-foreground">
-                    No historical data yet
+                    <div className="text-center">
+                      <Brain className="h-8 w-8 mx-auto mb-2" />
+                      <p>No historical data yet</p>
+                      <Button variant="link" onClick={generateSampleTwin}>Generate a snapshot</Button>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -358,7 +357,7 @@ export default function EconomicDigitalTwin() {
             </Card>
           ) : (
             simulations.map(sim => {
-              const outcomes = sim.projected_outcomes as { revenue_3m?: number; revenue_6m?: number; revenue_12m?: number } | null;
+              const outcomes = sim.projected_outcomes;
               return (
                 <Card key={sim.id}>
                   <CardContent className="py-4">

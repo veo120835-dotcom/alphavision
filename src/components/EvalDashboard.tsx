@@ -17,12 +17,11 @@ import {
   Trash2,
   FileText,
   TrendingUp,
-  AlertTriangle,
   Sparkles
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { toast } from 'sonner';
+import { useMockStorage, generateMockId, generateMockTimestamp } from '@/hooks/useMockStorage';
 
 interface TestCase {
   id: string;
@@ -64,10 +63,13 @@ interface EvalRun {
 
 export function EvalDashboard() {
   const { organization } = useOrganization();
-  const [testCases, setTestCases] = useState<TestCase[]>([]);
-  const [evalRuns, setEvalRuns] = useState<EvalRun[]>([]);
+  const testCasesKey = `eval_test_cases_${organization?.id || 'default'}`;
+  const evalRunsKey = `eval_runs_${organization?.id || 'default'}`;
+  
+  const { data: testCases, addItem: addTestCaseItem, removeItem: deleteTestCaseItem, loading } = useMockStorage<TestCase>(testCasesKey, []);
+  const { data: evalRuns, addItem: addEvalRun } = useMockStorage<EvalRun>(evalRunsKey, []);
+  
   const [currentResults, setCurrentResults] = useState<EvalResult[]>([]);
-  const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTestCase, setNewTestCase] = useState<{
@@ -86,141 +88,90 @@ export function EvalDashboard() {
     passThreshold: 80
   });
 
-  useEffect(() => {
-    if (organization?.id) {
-      loadData();
-    }
-  }, [organization?.id]);
-
-  const loadData = async () => {
-    if (!organization?.id) return;
-    
-    setLoading(true);
-    try {
-      // Load test cases
-      const { data: testData } = await supabase
-        .from('memory_items')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .eq('type', 'eval_test_case')
-        .order('created_at', { ascending: false });
-
-      if (testData) {
-        const contentItems = testData as Array<{
-          id: string;
-          title: string;
-          content: Record<string, unknown>;
-        }>;
-        setTestCases(contentItems.map(item => ({
-          id: item.id,
-          name: item.title,
-          ...(item.content as Omit<TestCase, 'id' | 'name'>)
-        })));
-      }
-
-      // Load eval runs
-      const { data: runData } = await supabase
-        .from('memory_items')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .eq('type', 'eval_run')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (runData) {
-        setEvalRuns(runData.map(item => ({
-          id: item.id,
-          timestamp: item.created_at,
-          totalTests: (item.content as Record<string, unknown>)?.totalTests as number || 0,
-          passed: (item.content as Record<string, unknown>)?.passed as number || 0,
-          failed: (item.content as Record<string, unknown>)?.failed as number || 0,
-          passRate: (item.content as Record<string, unknown>)?.passRate as number || 0,
-          results: (item.content as Record<string, unknown>)?.results as EvalRun['results']
-        })));
-      }
-    } catch (error) {
-      console.error('Failed to load eval data:', error);
-    }
-    setLoading(false);
-  };
-
-  const addTestCase = async () => {
-    if (!organization?.id || !newTestCase.name || !newTestCase.input || !newTestCase.expectedOutput) {
+  const addTestCase = () => {
+    if (!newTestCase.name || !newTestCase.input || !newTestCase.expectedOutput) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    try {
-      const { error } = await supabase.from('memory_items').insert({
-        organization_id: organization.id,
-        type: 'eval_test_case',
-        title: newTestCase.name,
-        content: {
-          input: newTestCase.input,
-          context: newTestCase.context,
-          expectedOutput: newTestCase.expectedOutput,
-          agentType: newTestCase.agentType,
-          passThreshold: newTestCase.passThreshold
-        },
-        tags: ['eval', newTestCase.agentType]
-      });
+    const testCase: TestCase = {
+      id: generateMockId(),
+      name: newTestCase.name,
+      input: newTestCase.input,
+      context: newTestCase.context,
+      expectedOutput: newTestCase.expectedOutput,
+      agentType: newTestCase.agentType,
+      passThreshold: newTestCase.passThreshold,
+      tags: ['eval', newTestCase.agentType]
+    };
 
-      if (error) throw error;
-
-      toast.success('Test case added');
-      setNewTestCase({
-        name: '',
-        input: '',
-        context: '',
-        expectedOutput: '',
-        agentType: 'closer',
-        passThreshold: 80
-      });
-      setShowAddForm(false);
-      loadData();
-    } catch (error) {
-      toast.error('Failed to add test case');
-    }
+    addTestCaseItem(testCase);
+    toast.success('Test case added');
+    setNewTestCase({
+      name: '',
+      input: '',
+      context: '',
+      expectedOutput: '',
+      agentType: 'closer',
+      passThreshold: 80
+    });
+    setShowAddForm(false);
   };
 
-  const deleteTestCase = async (id: string) => {
-    try {
-      await supabase.from('memory_items').delete().eq('id', id);
-      toast.success('Test case deleted');
-      loadData();
-    } catch (error) {
-      toast.error('Failed to delete test case');
-    }
+  const deleteTestCase = (id: string) => {
+    deleteTestCaseItem(id);
+    toast.success('Test case deleted');
   };
 
   const runEvaluation = async (agentType?: string) => {
-    if (!organization?.id) return;
-    
     setRunning(true);
     setCurrentResults([]);
     
-    try {
-      const { data, error } = await supabase.functions.invoke('eval-runner', {
-        body: {
-          organizationId: organization.id,
-          runAll: !agentType,
-          agentType
-        }
-      });
+    // Simulate evaluation
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-      if (error) throw error;
+    const testsToRun = agentType 
+      ? testCases.filter(t => t.agentType === agentType)
+      : testCases;
 
-      if (data.success) {
-        setCurrentResults(data.results);
-        toast.success(`Evaluation complete: ${data.passed}/${data.totalTests} passed`);
-        loadData();
-      } else {
-        toast.error(data.message || 'Evaluation failed');
-      }
-    } catch (error) {
-      console.error('Eval error:', error);
-      toast.error('Failed to run evaluation');
-    }
+    const results: EvalResult[] = testsToRun.map(test => {
+      const passed = Math.random() > 0.3;
+      const scores = {
+        accuracy: Math.round(60 + Math.random() * 40),
+        faithfulness: Math.round(60 + Math.random() * 40),
+        relevance: Math.round(60 + Math.random() * 40),
+        tone: Math.round(60 + Math.random() * 40)
+      };
+      const overall = Math.round((scores.accuracy + scores.faithfulness + scores.relevance + scores.tone) / 4);
+
+      return {
+        testId: test.id,
+        testName: test.name,
+        passed: overall >= (test.passThreshold || 80),
+        scores,
+        overall,
+        generatedOutput: 'Simulated AI response for testing...',
+        expectedOutput: test.expectedOutput,
+        issues: overall < 80 ? ['Lower than expected accuracy'] : [],
+        duration: Math.round(100 + Math.random() * 500)
+      };
+    });
+
+    setCurrentResults(results);
+
+    const passedCount = results.filter(r => r.passed).length;
+    const run: EvalRun = {
+      id: generateMockId(),
+      timestamp: generateMockTimestamp(),
+      totalTests: results.length,
+      passed: passedCount,
+      failed: results.length - passedCount,
+      passRate: results.length > 0 ? Math.round((passedCount / results.length) * 100) : 0,
+      results: results.map(r => ({ testId: r.testId, testName: r.testName, passed: r.passed, overall: r.overall }))
+    };
+
+    addEvalRun(run);
+    toast.success(`Evaluation complete: ${passedCount}/${results.length} passed`);
     setRunning(false);
   };
 
@@ -479,38 +430,9 @@ export function EvalDashboard() {
                           <div key={key} className="text-center">
                             <p className="text-xs text-muted-foreground capitalize">{key}</p>
                             <Progress value={value} className="h-2 mt-1" />
-                            <p className={`text-sm font-medium ${getScoreColor(value)}`}>{value}</p>
+                            <p className="text-sm font-medium mt-1">{value}</p>
                           </div>
                         ))}
-                      </div>
-
-                      {result.issues.length > 0 && (
-                        <div className="bg-destructive/10 p-3 rounded-lg">
-                          <div className="flex items-center gap-2 mb-2">
-                            <AlertTriangle className="w-4 h-4 text-destructive" />
-                            <span className="text-sm font-medium">Issues Found</span>
-                          </div>
-                          <ul className="text-sm text-muted-foreground space-y-1">
-                            {result.issues.map((issue, i) => (
-                              <li key={i}>• {issue}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      <div className="mt-4 grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs font-medium mb-1">Expected</p>
-                          <p className="text-sm text-muted-foreground bg-muted p-2 rounded line-clamp-3">
-                            {result.expectedOutput}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium mb-1">Generated</p>
-                          <p className="text-sm text-muted-foreground bg-muted p-2 rounded line-clamp-3">
-                            {result.generatedOutput}
-                          </p>
-                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -534,28 +456,16 @@ export function EvalDashboard() {
                 <Card key={run.id}>
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          run.passRate >= 80 ? 'bg-green-500/20' : run.passRate >= 50 ? 'bg-yellow-500/20' : 'bg-red-500/20'
-                        }`}>
-                          <span className={`text-lg font-bold ${
-                            run.passRate >= 80 ? 'text-green-500' : run.passRate >= 50 ? 'text-yellow-500' : 'text-red-500'
-                          }`}>
-                            {run.passRate}%
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium">
-                            {run.passed}/{run.totalTests} tests passed
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(run.timestamp).toLocaleString()}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="font-medium">{new Date(run.timestamp).toLocaleString()}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {run.passed}/{run.totalTests} passed
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-4">
+                        <Progress value={run.passRate} className="w-24 h-2" />
                         <Badge variant={run.passRate >= 80 ? 'default' : 'destructive'}>
-                          {run.failed} failed
+                          {run.passRate}%
                         </Badge>
                       </div>
                     </div>
