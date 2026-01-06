@@ -1,28 +1,22 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   BarChart3,
   TrendingUp,
-  TrendingDown,
   DollarSign,
-  Users,
-  Target,
   Lock,
   ArrowUp,
   ArrowDown,
   Minus,
   Crown,
-  Database,
-  Zap
+  Database
 } from 'lucide-react';
 import { useOrganization } from '@/hooks/useOrganization';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useMockStorage, generateMockId } from '@/hooks/useMockStorage';
 
 interface BenchmarkCategory {
   id: string;
@@ -51,49 +45,33 @@ interface BenchmarkAccess {
   api_access_enabled: boolean;
 }
 
+// Default sample data
+const defaultCategories: BenchmarkCategory[] = [
+  { id: '1', category_name: 'Revenue Metrics', description: 'Key revenue benchmarks', is_premium: false },
+  { id: '2', category_name: 'Conversion Rates', description: 'Sales and marketing conversion benchmarks', is_premium: false },
+  { id: '3', category_name: 'Premium Insights', description: 'Advanced competitive analysis', is_premium: true },
+  { id: '4', category_name: 'Enterprise Metrics', description: 'Enterprise-grade benchmarks', is_premium: true }
+];
+
+const defaultIndexes: BenchmarkIndex[] = [
+  { id: '1', category_id: '1', index_name: 'Avg MRR', current_value: 15200, previous_value: 14500, change_percent: 4.8, sample_size: 1250, confidence_level: 95, calculated_at: new Date().toISOString() },
+  { id: '2', category_id: '1', index_name: 'Revenue Growth', current_value: 12.5, previous_value: 11.2, change_percent: 11.6, sample_size: 1180, confidence_level: 92, calculated_at: new Date().toISOString() },
+  { id: '3', category_id: '2', index_name: 'Lead-to-Close', current_value: 8.2, previous_value: 7.8, change_percent: 5.1, sample_size: 890, confidence_level: 88, calculated_at: new Date().toISOString() },
+  { id: '4', category_id: '2', index_name: 'Demo Show Rate', current_value: 72.5, previous_value: 70.1, change_percent: 3.4, sample_size: 750, confidence_level: 90, calculated_at: new Date().toISOString() }
+];
+
 export default function ExclusiveBenchmarks() {
   const { organization } = useOrganization();
+  const categoriesKey = `benchmark_categories_${organization?.id || 'default'}`;
+  const indexesKey = `benchmark_indexes_${organization?.id || 'default'}`;
+  const accessKey = `benchmark_access_${organization?.id || 'default'}`;
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ['benchmark-categories'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('benchmark_categories')
-        .select('*')
-        .order('category_name');
-      if (error) throw error;
-      return data as BenchmarkCategory[];
-    }
-  });
+  const { data: categories } = useMockStorage<BenchmarkCategory>(categoriesKey, defaultCategories);
+  const { data: indexes } = useMockStorage<BenchmarkIndex>(indexesKey, defaultIndexes);
+  const { data: accessData } = useMockStorage<BenchmarkAccess>(accessKey, []);
 
-  const { data: indexes = [] } = useQuery({
-    queryKey: ['benchmark-indexes'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('benchmark_indexes')
-        .select('*')
-        .order('calculated_at', { ascending: false });
-      if (error) throw error;
-      return data as BenchmarkIndex[];
-    }
-  });
-
-  const { data: access } = useQuery({
-    queryKey: ['benchmark-access', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return null;
-      const { data, error } = await supabase
-        .from('benchmark_access')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data as BenchmarkAccess | null;
-    },
-    enabled: !!organization?.id
-  });
-
-  const accessLevel = access?.access_level || 'none';
+  const access = accessData[0];
+  const accessLevel = access?.access_level || 'free';
   const isPremium = accessLevel === 'premium' || accessLevel === 'enterprise';
   const premiumCategories = categories.filter(c => c.is_premium);
   const freeCategories = categories.filter(c => !c.is_premium);
@@ -114,7 +92,6 @@ export default function ExclusiveBenchmarks() {
     return 'text-red-500';
   };
 
-  // Sample chart data (would be populated from real data)
   const chartData = [
     { month: 'Jan', yourValue: 42, benchmark: 38 },
     { month: 'Feb', yourValue: 45, benchmark: 39 },
@@ -190,7 +167,7 @@ export default function ExclusiveBenchmarks() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Premium Access</p>
-                <p className="text-2xl font-bold capitalize">{accessLevel || 'None'}</p>
+                <p className="text-2xl font-bold capitalize">{accessLevel}</p>
               </div>
               <Crown className="h-8 w-8 text-yellow-500" />
             </div>

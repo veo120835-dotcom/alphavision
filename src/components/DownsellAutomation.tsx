@@ -12,21 +12,17 @@ import {
   DollarSign, 
   Package, 
   Zap,
-  Settings,
-  TrendingDown,
   TrendingUp,
   CheckCircle2,
-  XCircle,
-  AlertTriangle,
   RefreshCw,
   Plus,
   Trash2,
   Target,
   Users
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { toast } from "sonner";
+import { useMockStorage, generateMockId, generateMockTimestamp } from "@/hooks/useMockStorage";
 import { formatDistanceToNow } from "date-fns";
 
 interface DownsellProduct {
@@ -50,101 +46,46 @@ interface DownsellEvent {
 
 export function DownsellAutomation() {
   const { organization } = useOrganization();
+  const storageKey = `downsell_events_${organization?.id || 'default'}`;
+  const configKey = `downsell_config_${organization?.id || 'default'}`;
+  
+  const { data: events, addItem, loading } = useMockStorage<DownsellEvent>(storageKey, []);
   const [enabled, setEnabled] = useState(true);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [triggerThreshold, setTriggerThreshold] = useState(1000); // Trigger downsell for rejections > $1000
+  const [triggerThreshold, setTriggerThreshold] = useState(1000);
   const [autoSequence, setAutoSequence] = useState(true);
   const [products, setProducts] = useState<DownsellProduct[]>([
     { id: '1', name: 'Digital Playbook', price: 27, description: 'Complete guide to [TOPIC]', paymentLink: '' },
     { id: '2', name: 'Mini Course', price: 47, description: '3-part video series', paymentLink: '' },
     { id: '3', name: 'Templates Pack', price: 17, description: 'Ready-to-use templates', paymentLink: '' },
   ]);
-  const [events, setEvents] = useState<DownsellEvent[]>([]);
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, description: '', paymentLink: '' });
   const [showAddProduct, setShowAddProduct] = useState(false);
 
   useEffect(() => {
-    if (organization?.id) {
-      loadEvents();
-      loadConfig();
-
-      // Real-time subscription for downsell events
-      const channel = supabase
-        .channel('downsell-events-realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'revenue_events',
-            filter: `organization_id=eq.${organization.id}`
-          },
-          (payload) => {
-            const event = payload.new as any;
-            if (event.event_type === 'downsell_converted') {
-              toast.success(`Downsell converted! +$${event.amount}`);
-              loadEvents();
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
+    loadConfig();
   }, [organization?.id]);
 
-  const loadConfig = async () => {
-    if (!organization?.id) return;
-    
-    const { data } = await supabase
-      .from('memory_items')
-      .select('content')
-      .eq('organization_id', organization.id)
-      .eq('type', 'config')
-      .eq('title', 'downsell_automation')
-      .single();
-    
-    if (data?.content) {
-      const content = data.content as any;
-      if (content.products) setProducts(content.products);
-      if (content.triggerThreshold) setTriggerThreshold(content.triggerThreshold);
-      if (content.autoSequence !== undefined) setAutoSequence(content.autoSequence);
-      if (content.enabled !== undefined) setEnabled(content.enabled);
+  const loadConfig = () => {
+    try {
+      const stored = localStorage.getItem(configKey);
+      if (stored) {
+        const content = JSON.parse(stored);
+        if (content.products) setProducts(content.products);
+        if (content.triggerThreshold) setTriggerThreshold(content.triggerThreshold);
+        if (content.autoSequence !== undefined) setAutoSequence(content.autoSequence);
+        if (content.enabled !== undefined) setEnabled(content.enabled);
+      }
+    } catch (error) {
+      console.error('Error loading config:', error);
     }
   };
 
   const saveConfig = async () => {
-    if (!organization?.id) return;
-    
     setSaving(true);
     try {
       const configData = { products, triggerThreshold, autoSequence, enabled };
-      
-      const { data: existing } = await supabase
-        .from('memory_items')
-        .select('id')
-        .eq('organization_id', organization.id)
-        .eq('type', 'config')
-        .eq('title', 'downsell_automation')
-        .single();
-
-      if (existing) {
-        await supabase
-          .from('memory_items')
-          .update({ content: configData as any })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('memory_items').insert({
-          organization_id: organization.id,
-          type: 'config',
-          title: 'downsell_automation',
-          content: configData as any
-        });
-      }
-      
+      localStorage.setItem(configKey, JSON.stringify(configData));
       toast.success('Downsell configuration saved!');
     } catch (error) {
       console.error('Error saving config:', error);
@@ -154,83 +95,30 @@ export function DownsellAutomation() {
     }
   };
 
-  const loadEvents = async () => {
-    if (!organization?.id) return;
-    
-    setLoading(true);
-    try {
-      // Load revenue events that are downsells
-      const { data } = await supabase
-        .from('revenue_events')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .eq('event_type', 'downsell_converted')
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (data) {
-        // Transform to DownsellEvent format
-        const transformedEvents: DownsellEvent[] = data.map(e => ({
-          id: e.id,
-          lead_name: (e.metadata as any)?.lead_name || 'Unknown Lead',
-          original_offer: (e.metadata as any)?.original_offer || 'High-Ticket Service',
-          original_price: (e.metadata as any)?.original_price || 2500,
-          downsell_offer: (e.metadata as any)?.downsell_offer || 'Digital Product',
-          downsell_price: e.amount || 27,
-          status: 'converted',
-          created_at: e.created_at
-        }));
-        setEvents(transformedEvents);
-      }
-    } catch (error) {
-      console.error('Error loading events:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const simulateDownsell = async () => {
-    if (!organization?.id) return;
-
+  const simulateDownsell = () => {
     const leadNames = ['Sarah M.', 'John D.', 'Emily R.', 'Michael K.', 'Lisa T.'];
     const originalOffers = ['Premium Coaching ($2,500)', 'Consulting Package ($1,997)', 'Group Program ($997)'];
     const randomProduct = products[Math.floor(Math.random() * products.length)];
     const originalOffer = originalOffers[Math.floor(Math.random() * originalOffers.length)];
+    const converted = Math.random() > 0.3;
 
-    try {
-      // Log the agent action
-      await supabase.from('agent_execution_logs').insert({
-        organization_id: organization.id,
-        action_type: 'closer',
-        reasoning: `Lead rejected ${originalOffer}. Downsell logic triggered.`,
-        result: `Offered ${randomProduct.name} at $${randomProduct.price} as alternative`
-      });
+    const newEvent: DownsellEvent = {
+      id: generateMockId(),
+      lead_name: leadNames[Math.floor(Math.random() * leadNames.length)],
+      original_offer: originalOffer,
+      original_price: parseInt(originalOffer.match(/\$(\d+,?\d*)/)?.[1]?.replace(',', '') || '0'),
+      downsell_offer: randomProduct.name,
+      downsell_price: randomProduct.price,
+      status: converted ? 'converted' : 'pending',
+      created_at: generateMockTimestamp()
+    };
 
-      // Create revenue event if converted
-      const converted = Math.random() > 0.3; // 70% conversion simulation
-      if (converted) {
-        await supabase.from('revenue_events').insert({
-          organization_id: organization.id,
-          event_type: 'downsell_converted',
-          amount: randomProduct.price,
-          currency: 'USD',
-          payment_provider: 'stripe',
-          metadata: {
-            lead_name: leadNames[Math.floor(Math.random() * leadNames.length)],
-            original_offer: originalOffer,
-            original_price: parseInt(originalOffer.match(/\$(\d+,?\d*)/)?.[1]?.replace(',', '') || '0'),
-            downsell_offer: randomProduct.name
-          }
-        });
-        toast.success(`Downsell converted! ${randomProduct.name} sold for $${randomProduct.price}`);
-      } else {
-        toast.info('Downsell offered, awaiting response...');
-      }
+    addItem(newEvent);
 
-      loadEvents();
-    } catch (error) {
-      console.error('Error simulating downsell:', error);
-      toast.error('Failed to simulate downsell');
+    if (converted) {
+      toast.success(`Downsell converted! ${randomProduct.name} sold for $${randomProduct.price}`);
+    } else {
+      toast.info('Downsell offered, awaiting response...');
     }
   };
 
@@ -241,7 +129,7 @@ export function DownsellAutomation() {
     }
 
     const product: DownsellProduct = {
-      id: Date.now().toString(),
+      id: generateMockId(),
       ...newProduct
     };
 
@@ -256,9 +144,11 @@ export function DownsellAutomation() {
     toast.success('Product removed');
   };
 
-  const totalDownsellRevenue = events.reduce((sum, e) => sum + e.downsell_price, 0);
+  const totalDownsellRevenue = events.filter(e => e.status === 'converted').reduce((sum, e) => sum + e.downsell_price, 0);
   const conversionRate = events.length > 0 ? Math.round((events.filter(e => e.status === 'converted').length / events.length) * 100) : 0;
-  const avgDownsellValue = events.length > 0 ? Math.round(totalDownsellRevenue / events.length) : 0;
+  const avgDownsellValue = events.filter(e => e.status === 'converted').length > 0 
+    ? Math.round(totalDownsellRevenue / events.filter(e => e.status === 'converted').length) 
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -317,6 +207,7 @@ export function DownsellAutomation() {
           </div>
         </CardContent>
       </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="card-glow border-orange-500/30">
@@ -368,7 +259,7 @@ export function DownsellAutomation() {
                 <Users className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{events.length}</p>
+                <p className="text-2xl font-bold">{events.filter(e => e.status === 'converted').length}</p>
                 <p className="text-sm text-muted-foreground">Leads Recovered</p>
               </div>
             </div>
@@ -478,92 +369,56 @@ export function DownsellAutomation() {
           </CardContent>
         </Card>
 
-        {/* Downsell Flow Visualization */}
+        {/* Recent Events */}
         <Card className="card-glow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingDown className="w-5 h-5 text-orange-400" />
-              Downsell Logic Flow
+              <Zap className="w-5 h-5 text-orange-400" />
+              Recent Downsell Events
             </CardTitle>
-            <CardDescription>Automatic fallback sequence</CardDescription>
+            <CardDescription>Track downsell conversions in real-time</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Flow Steps */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-lg bg-red-500/20">
-                  <XCircle className="w-5 h-5 text-red-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">High-Ticket Offer Rejected</p>
-                  <p className="text-sm text-muted-foreground">$997+ service declined</p>
-                </div>
-              </div>
-
-              <div className="ml-6 border-l-2 border-dashed border-muted-foreground/30 pl-6 py-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Zap className="w-4 h-4 text-primary" />
-                  Closer Agent triggers downsell logic
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-lg bg-orange-500/20">
-                  <ArrowDownRight className="w-5 h-5 text-orange-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Pivot to Low-Tier Offer</p>
-                  <p className="text-sm text-muted-foreground">Offer $27-$97 digital product</p>
-                </div>
-              </div>
-
-              <div className="ml-6 border-l-2 border-dashed border-muted-foreground/30 pl-6 py-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                  "I understand [OFFER] isn't right for you right now. Would this help?"
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-lg bg-green-500/20">
-                  <CheckCircle2 className="w-5 h-5 text-green-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Revenue Recovered</p>
-                  <p className="text-sm text-muted-foreground">Lead enters nurture sequence</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Downsells */}
-            <div className="pt-4 border-t border-border">
-              <h4 className="font-medium mb-3 flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 text-primary" />
-                Recent Downsell Events
-              </h4>
-              <ScrollArea className="h-[150px]">
-                <div className="space-y-2">
-                  {events.slice(0, 5).map((event) => (
-                    <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
-                      <div className="flex-1">
-                        <p className="text-sm">{event.lead_name}: {event.downsell_offer}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {event.original_offer} → ${event.downsell_price}
-                        </p>
+          <CardContent>
+            <ScrollArea className="h-[400px]">
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {events.map((event, idx) => (
+                    <motion.div
+                      key={event.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="p-3 rounded-lg bg-muted/30"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{event.lead_name}</span>
+                        <Badge 
+                          variant={event.status === 'converted' ? 'default' : 'outline'}
+                          className={event.status === 'converted' ? 'bg-green-500/20 text-green-400' : ''}
+                        >
+                          {event.status}
+                        </Badge>
                       </div>
-                      <span className="text-sm font-medium text-green-400">+${event.downsell_price}</span>
-                    </div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        <span className="line-through">{event.original_offer}</span>
+                        <span className="mx-2">→</span>
+                        <span className="text-foreground">{event.downsell_offer} (${event.downsell_price})</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                      </p>
+                    </motion.div>
                   ))}
-
-                  {events.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No downsell events yet
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
+                </AnimatePresence>
+                {events.length === 0 && !loading && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <ArrowDownRight className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>No downsell events yet</p>
+                    <p className="text-sm">Simulate a rejection to see the automation</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>

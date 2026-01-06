@@ -14,8 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMockStorage, generateMockId } from "@/hooks/useMockStorage";
 
 interface Moat {
   id: string;
@@ -43,10 +43,10 @@ const moatTypeConfig: Record<string, { icon: any; color: string; label: string }
 };
 
 export default function EconomicMoatDesigner() {
-  const [moats, setMoats] = useState<Moat[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
   const { organization } = useOrganization();
+  const storageKey = `economic_moats_${organization?.id || 'default'}`;
+  const { data: moats, addItem, updateItem, loading } = useMockStorage<Moat>(storageKey, []);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const [newMoat, setNewMoat] = useState({
     moat_type: 'pricing_power',
@@ -59,70 +59,45 @@ export default function EconomicMoatDesigner() {
     copyability_score: 5
   });
 
-  useEffect(() => {
-    if (organization?.id) fetchMoats();
-  }, [organization?.id]);
-
-  const fetchMoats = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('economic_moats')
-        .select('*')
-        .eq('organization_id', organization!.id)
-        .order('current_strength', { ascending: false });
-      
-      if (error) throw error;
-      setMoats(data || []);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
+  const addMoat = () => {
+    if (!newMoat.title) {
+      toast.error('Please enter a title');
+      return;
     }
+
+    const moat: Moat = {
+      id: generateMockId(),
+      ...newMoat,
+      compounds_with_time: true,
+      progress_percent: Math.round((newMoat.current_strength / newMoat.target_strength) * 100),
+      status: newMoat.current_strength >= 60 ? 'established' : 'building'
+    };
+
+    addItem(moat);
+    toast.success('Moat added');
+    setShowAddModal(false);
+    setNewMoat({
+      moat_type: 'pricing_power',
+      title: '',
+      description: '',
+      current_strength: 20,
+      target_strength: 80,
+      time_to_build_months: 12,
+      switching_cost_score: 5,
+      copyability_score: 5
+    });
   };
 
-  const addMoat = async () => {
-    if (!organization?.id || !newMoat.title) return;
+  const updateMoatStrength = (id: string, strength: number) => {
+    const moat = moats.find(m => m.id === id);
+    if (!moat) return;
 
-    try {
-      const { error } = await supabase
-        .from('economic_moats')
-        .insert({
-          organization_id: organization.id,
-          ...newMoat,
-          compounds_with_time: true,
-          progress_percent: Math.round((newMoat.current_strength / newMoat.target_strength) * 100),
-          status: newMoat.current_strength >= 60 ? 'established' : 'building'
-        });
-
-      if (error) throw error;
-      toast.success('Moat added');
-      setShowAddModal(false);
-      fetchMoats();
-    } catch (error) {
-      toast.error('Failed to add moat');
-    }
-  };
-
-  const updateMoatStrength = async (id: string, strength: number) => {
-    try {
-      const moat = moats.find(m => m.id === id);
-      if (!moat) return;
-
-      const { error } = await supabase
-        .from('economic_moats')
-        .update({ 
-          current_strength: strength,
-          progress_percent: Math.round((strength / moat.target_strength) * 100),
-          status: strength >= 60 ? 'established' : 'building'
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-      toast.success('Strength updated');
-      fetchMoats();
-    } catch (error) {
-      toast.error('Failed to update');
-    }
+    updateItem(id, {
+      current_strength: strength,
+      progress_percent: Math.round((strength / moat.target_strength) * 100),
+      status: strength >= 60 ? 'established' : 'building'
+    });
+    toast.success('Strength updated');
   };
 
   const overallMoatScore = moats.length > 0 

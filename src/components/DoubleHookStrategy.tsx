@@ -15,27 +15,22 @@ import {
   Send, 
   Zap,
   Settings,
-  Play,
-  Pause,
   Clock,
-  Users,
   TrendingUp,
   CheckCircle2,
   RefreshCw,
-  Sparkles,
-  Heart
+  Sparkles
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { toast } from "sonner";
-import { format, formatDistanceToNow } from "date-fns";
+import { useMockStorage, generateMockId, generateMockTimestamp } from "@/hooks/useMockStorage";
 
 interface DMConversation {
   id: string;
   platform: string;
   status: string;
   lead_id: string | null;
-  messages_count: number | null;
+  messages_count: number;
   last_message_at: string | null;
   ai_handling_mode: string | null;
   created_at: string;
@@ -53,8 +48,10 @@ interface DoubleHookConfig {
 
 export function DoubleHookStrategy() {
   const { organization } = useOrganization();
-  const [conversations, setConversations] = useState<DMConversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const storageKey = `double_hook_${organization?.id || 'default'}`;
+  const configKey = `double_hook_config_${organization?.id || 'default'}`;
+  
+  const { data: conversations, addItem, loading } = useMockStorage<DMConversation>(storageKey, []);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<DoubleHookConfig>({
     enabled: true,
@@ -66,7 +63,7 @@ export function DoubleHookStrategy() {
     platformFilters: ['instagram', 'tiktok', 'twitter']
   });
   const [newLink, setNewLink] = useState("");
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     responseRate: 32,
     avgResponseTime: '2.4h',
     conversionsToday: 3,
@@ -74,108 +71,30 @@ export function DoubleHookStrategy() {
   });
 
   useEffect(() => {
-    if (organization?.id) {
-      fetchData();
-      loadConfig();
+    loadConfig();
+  }, [organization?.id]);
 
-      // Real-time subscription for new followers/conversations
-      const channel = supabase
-        .channel('dm-conversations-realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'dm_conversations',
-            filter: `organization_id=eq.${organization.id}`
-          },
-          (payload) => {
-            console.log('New DM conversation:', payload);
-            setConversations(prev => [payload.new as DMConversation, ...prev]);
-            setStats(prev => ({ ...prev, followersToday: prev.followersToday + 1 }));
-            if (config.enabled) {
-              toast.success('New follower detected! Double Hook triggered 🎯');
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [organization?.id, config.enabled]);
-
-  const loadConfig = async () => {
-    if (!organization?.id) return;
-    
-    const { data } = await supabase
-      .from('memory_items')
-      .select('content')
-      .eq('organization_id', organization.id)
-      .eq('type', 'config')
-      .eq('title', 'double_hook_strategy')
-      .single();
-    
-    if (data?.content) {
-      setConfig(prev => ({ ...prev, ...(data.content as any) }));
+  const loadConfig = () => {
+    try {
+      const stored = localStorage.getItem(configKey);
+      if (stored) {
+        setConfig(prev => ({ ...prev, ...JSON.parse(stored) }));
+      }
+    } catch (error) {
+      console.error('Error loading config:', error);
     }
   };
 
   const saveConfig = async () => {
-    if (!organization?.id) return;
-    
     setSaving(true);
     try {
-      const { data: existing } = await supabase
-        .from('memory_items')
-        .select('id')
-        .eq('organization_id', organization.id)
-        .eq('type', 'config')
-        .eq('title', 'double_hook_strategy')
-        .single();
-
-      if (existing) {
-        await supabase
-          .from('memory_items')
-          .update({ content: config as any })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('memory_items').insert({
-          organization_id: organization.id,
-          type: 'config',
-          title: 'double_hook_strategy',
-          content: config as any
-        });
-      }
-      
+      localStorage.setItem(configKey, JSON.stringify(config));
       toast.success('Configuration saved!');
     } catch (error) {
       console.error('Error saving config:', error);
       toast.error('Failed to save configuration');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const fetchData = async () => {
-    if (!organization?.id) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('dm_conversations')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      setConversations(data || []);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -196,49 +115,23 @@ export function DoubleHookStrategy() {
     }));
   };
 
-  const simulateNewFollower = async () => {
-    if (!organization?.id) return;
-
+  const simulateNewFollower = () => {
     const platforms = ['instagram', 'tiktok', 'twitter'];
     const platform = platforms[Math.floor(Math.random() * platforms.length)];
 
-    try {
-      // Create a test lead first
-      const { data: lead } = await supabase
-        .from('leads')
-        .insert({
-          organization_id: organization.id,
-          name: `Test Follower ${Math.floor(Math.random() * 1000)}`,
-          source: 'social',
-          platform,
-          status: 'new',
-          intent_score: 20
-        })
-        .select()
-        .single();
+    const newConversation: DMConversation = {
+      id: generateMockId(),
+      platform,
+      status: 'active',
+      lead_id: generateMockId(),
+      messages_count: 1,
+      last_message_at: generateMockTimestamp(),
+      ai_handling_mode: 'autonomous',
+      created_at: generateMockTimestamp()
+    };
 
-      // Create DM conversation
-      await supabase.from('dm_conversations').insert({
-        organization_id: organization.id,
-        platform,
-        lead_id: lead?.id,
-        status: 'active',
-        ai_handling_mode: 'autonomous'
-      });
-
-      // Log the action
-      await supabase.from('agent_execution_logs').insert({
-        organization_id: organization.id,
-        action_type: 'socialite',
-        reasoning: 'Double Hook Strategy: New follower detected',
-        result: `Sent welcome DM with content link to new ${platform} follower`
-      });
-
-      toast.success(`Simulated new ${platform} follower! Double Hook triggered.`);
-    } catch (error) {
-      console.error('Error simulating follower:', error);
-      toast.error('Failed to simulate follower');
-    }
+    addItem(newConversation);
+    toast.success(`Simulated new ${platform} follower! Double Hook triggered.`);
   };
 
   const activeConversations = conversations.filter(c => c.status === 'active').length;
@@ -491,36 +384,30 @@ export function DoubleHookStrategy() {
                       transition={{ delay: idx * 0.05 }}
                       className="flex items-start gap-3 p-3 rounded-lg bg-muted/30"
                     >
-                      <div className="p-2 rounded-lg bg-pink-500/20">
-                        <Heart className="w-4 h-4 text-pink-400" />
+                      <div className="p-2 rounded-full bg-primary/20">
+                        <UserPlus className="w-4 h-4 text-primary" />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium capitalize">{conv.platform}</span>
-                          <Badge 
-                            variant="secondary" 
-                            className={conv.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-muted'}
-                          >
-                            {conv.status}
-                          </Badge>
+                          <Badge variant="outline" className="text-xs">{conv.status}</Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {conv.messages_count || 0} messages • {conv.ai_handling_mode}
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {conv.messages_count} messages sent
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(conv.created_at), { addSuffix: true })}
-                        </p>
+                        <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          {new Date(conv.created_at).toLocaleString()}
+                        </div>
                       </div>
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
                     </motion.div>
                   ))}
                 </AnimatePresence>
-
                 {conversations.length === 0 && !loading && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>No Double Hooks sent yet</p>
-                    <p className="text-sm">Simulate a follower to test</p>
+                  <div className="text-center py-12 text-muted-foreground">
+                    <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>No conversations yet</p>
+                    <p className="text-sm">Simulate a follower to see the strategy in action</p>
                   </div>
                 )}
               </div>
