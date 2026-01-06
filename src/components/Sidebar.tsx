@@ -220,6 +220,7 @@ export function Sidebar() {
     {
       title: "🤖 Agents",
       items: [
+        { id: 'agent-packs', icon: Sparkles, label: '✨ AI Agent Packs' },
         { id: 'control-center', icon: Cpu, label: 'Control Center' },
         { id: 'sniper', icon: Target, label: '🎯 Sniper' },
         { id: 'dm-inbox', icon: MessageSquare, label: '💬 DM Closer' },

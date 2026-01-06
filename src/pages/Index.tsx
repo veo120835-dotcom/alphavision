@@ -50,6 +50,7 @@ const ClientQualityOptimizer = lazyNamed(() => import("@/components/ClientQualit
 const TimeToMoneyScore = lazyNamed(() => import("@/components/TimeToMoneyScore"), "TimeToMoneyScore");
 const WorkflowTemplatesLibrary = lazyNamed(() => import("@/components/workflows/WorkflowTemplatesLibrary"), "WorkflowTemplatesLibrary");
 const AdvancedLeadScoring = lazyNamed(() => import("@/components/workflows/AdvancedLeadScoring"), "AdvancedLeadScoring");
+const AgentPacksLibrary = lazyNamed(() => import("@/components/AgentPacksLibrary"), "AgentPacksLibrary");
 const TrendScouterDashboard = lazyNamed(() => import("@/components/TrendScouterDashboard"), "TrendScouterDashboard");
 const AgentExecutionEngine = lazyNamed(() => import("@/components/AgentExecutionEngine"), "AgentExecutionEngine");
 const WorkflowTriggersView = lazyNamed(() => import("@/components/WorkflowTriggersView"), "WorkflowTriggersView");
@@ -266,6 +267,7 @@ const Index = () => {
       case 'pricing': return <PricingPowerAnalyzer />;
       case 'clientquality': return <ClientQualityOptimizer />;
       case 'timetomoney': return <TimeToMoneyScore />;
+      case 'agent-packs': return <AgentPacksLibrary />;
       case 'workflow-templates': return <WorkflowTemplatesLibrary />;
       case 'advanced-scoring': return <AdvancedLeadScoring />;
       case 'trends': return <TrendScouterDashboard />;
