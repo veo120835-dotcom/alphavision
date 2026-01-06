@@ -21,13 +21,13 @@
 
 ### In Stripe Dashboard
 ```
-URL: https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/stripe
+URL: https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/stripe
 Events: invoice.paid, checkout.session.completed, customer.subscription.*
 ```
 
 ### In GoHighLevel
 ```
-URL: https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
+URL: https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
 Events: Contact Created, Opportunity Won, Appointment Booked
 ```
 

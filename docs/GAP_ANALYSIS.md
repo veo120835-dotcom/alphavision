@@ -289,5 +289,5 @@ Project Root:
 ---
 
 **Organization ID**: `3253d6db-592b-443b-9135-65be14c5f0d4`  
-**Supabase URL**: `https://ntpjmirozltlgmdawuvw.supabase.co`  
+**Supabase URL**: `https://wqdflwqepedqgbcwqqq.supabase.co`  
 **Credits Available**: 100 (free)

@@ -145,7 +145,7 @@ Alpha Vision is built and deployed. Now you need to:
 |------|--------|------|
 | 1 | After EACH handler, add **HTTP Request** node | ☐ |
 | 2 | Method: POST | ☐ |
-| 3 | URL: `https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/tools/callback` | ☐ |
+| 3 | URL: `https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/tools/callback` | ☐ |
 | 4 | Add Headers: | |
 |   | `Content-Type`: `application/json` | ☐ |
 |   | `X-AV-Org-Id`: `{{ $json.org_id }}` | ☐ |
@@ -197,7 +197,7 @@ Alpha Vision is built and deployed. Now you need to:
 |------|--------|------|
 | 1 | Go to https://dashboard.stripe.com/webhooks | ☐ |
 | 2 | Click "Add endpoint" | ☐ |
-| 3 | Endpoint URL: `https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/stripe` | ☐ |
+| 3 | Endpoint URL: `https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/stripe` | ☐ |
 | 4 | Select events to listen to: | |
 |   | ☐ `invoice.paid` | ☐ |
 |   | ☐ `checkout.session.completed` | ☐ |
@@ -218,7 +218,7 @@ Alpha Vision is built and deployed. Now you need to:
 |------|--------|------|
 | 1 | Install Stripe CLI: https://stripe.com/docs/stripe-cli | ☐ |
 | 2 | Run: `stripe login` | ☐ |
-| 3 | Run: `stripe listen --forward-to https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/stripe` | ☐ |
+| 3 | Run: `stripe listen --forward-to https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/stripe` | ☐ |
 | 4 | In another terminal: `stripe trigger payment_intent.succeeded` | ☐ |
 | 5 | Verify webhook received in Alpha Vision logs | ☐ |
 
@@ -253,7 +253,7 @@ Alpha Vision is built and deployed. Now you need to:
 |------|--------|------|
 | 1 | Go to Settings → Webhooks | ☐ |
 | 2 | Click "Add Webhook" | ☐ |
-| 3 | URL: `https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/ghl` | ☐ |
+| 3 | URL: `https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/ghl` | ☐ |
 | 4 | Select events: | |
 |   | ☐ Contact Created | ☐ |
 |   | ☐ Contact Updated | ☐ |
@@ -346,7 +346,7 @@ Go to Alpha Vision → API Keys page and add:
 | 3 | Enable APIs: Calendar API, Gmail API | ☐ |
 | 4 | Go to APIs & Services → Credentials | ☐ |
 | 5 | Create OAuth 2.0 Client ID | ☐ |
-| 6 | Add authorized redirect URI: `https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/google-oauth` | ☐ |
+| 6 | Add authorized redirect URI: `https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/google-oauth` | ☐ |
 | 7 | Copy Client ID and Client Secret | ☐ |
 | 8 | Add to Alpha Vision secrets | ☐ |
 

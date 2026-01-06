@@ -213,7 +213,7 @@ This workflow receives all action requests from Alpha Vision.
    ```
    Node Type: HTTP Request
    Method: POST
-   URL: https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/tools/callback
+   URL: https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/tools/callback
    
    Headers:
    - X-AV-Org-Id: {{ $json.body.org_id }}
@@ -296,19 +296,19 @@ In GHL, go to **Automations** → **Webhooks**:
 
 1. **Lead Created Webhook:**
    ```
-   URL: https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
+   URL: https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
    Event: Contact Created
    ```
 
 2. **Opportunity Won Webhook:**
    ```
-   URL: https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
+   URL: https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
    Event: Opportunity Status Changed (filter: won)
    ```
 
 3. **Appointment Booked Webhook:**
    ```
-   URL: https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
+   URL: https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
    Event: Appointment Booked
    ```
 
@@ -338,7 +338,7 @@ In Stripe Dashboard → **Webhooks**:
 
 1. Add endpoint:
    ```
-   URL: https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/stripe
+   URL: https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/stripe
    ```
 
 2. Select events:
@@ -490,9 +490,9 @@ After completing this setup:
 - Look at API client in `src/lib/api-client.ts`
 
 **Your Webhook URLs:**
-- n8n Callback: `https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/tools/callback`
-- Stripe: `https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/stripe`
-- GHL: `https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/webhooks/ghl`
+- n8n Callback: `https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/tools/callback`
+- Stripe: `https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/stripe`
+- GHL: `https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/ghl`
 
 ---
 

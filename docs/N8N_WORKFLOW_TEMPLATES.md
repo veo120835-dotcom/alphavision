@@ -92,7 +92,7 @@ This is the MAIN workflow that receives all Alpha Vision actions.
   "type": "n8n-nodes-base.httpRequest",
   "parameters": {
     "method": "POST",
-    "url": "https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/tools/callback",
+    "url": "https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/tools/callback",
     "headers": {
       "Content-Type": "application/json",
       "X-AV-Org-Id": "={{ $node['Extract Variables'].json.org_id }}",
@@ -120,7 +120,7 @@ This is the MAIN workflow that receives all Alpha Vision actions.
   "type": "n8n-nodes-base.httpRequest",
   "parameters": {
     "method": "POST",
-    "url": "https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/tools/callback",
+    "url": "https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/tools/callback",
     "headers": {
       "Content-Type": "application/json",
       "X-AV-Org-Id": "={{ $node['Extract Variables'].json.org_id }}",
@@ -512,7 +512,7 @@ Copy this JSON to import a basic workflow into n8n:
     {
       "parameters": {
         "method": "POST",
-        "url": "https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/tools/callback",
+        "url": "https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/tools/callback",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

@@ -26,7 +26,7 @@ Visit: https://app.n8n.cloud/register
 
 # 3. Add callback nodes
 After each action, HTTP POST to:
-https://nxyrbbnplmqvptdxqgqn.supabase.co/functions/v1/webhooks/v1/tools/callback
+https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/tools/callback
 ```
 
 #### Stripe Setup (Required for payments)
@@ -37,7 +37,7 @@ Copy: Secret key (sk_test_xxx or sk_live_xxx)
 
 # 2. Configure webhook
 Visit: https://dashboard.stripe.com/webhooks
-Add endpoint: https://nxyrbbnplmqvptdxqgqn.supabase.co/functions/v1/webhooks/v1/webhooks/stripe
+Add endpoint: https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/stripe
 Select events: invoice.paid, checkout.session.completed, customer.subscription.*
 Copy: Signing secret (whsec_xxx)
 ```
@@ -50,7 +50,7 @@ Copy: API Key and Location ID
 
 # 2. Configure webhook
 Visit: GHL Settings → Webhooks
-Add: https://nxyrbbnplmqvptdxqgqn.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
+Add: https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/ghl
 Select: Contact Created, Opportunity Won, Appointment Booked
 ```
 
@@ -85,7 +85,7 @@ GOOGLE_CLIENT_SECRET=<from-google-cloud>
 **Test Payments**:
 ```bash
 # Using Stripe CLI
-stripe listen --forward-to https://nxyrbbnplmqvptdxqgqn.supabase.co/functions/v1/webhooks/v1/webhooks/stripe
+stripe listen --forward-to https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/webhooks/stripe
 stripe trigger payment_intent.succeeded
 ```
 

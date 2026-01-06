@@ -24,7 +24,7 @@
 **How**:
 ```bash
 1. Open Supabase Dashboard
-   https://supabase.com/dashboard/project/nxyrbbnplmqvptdxqgqn/auth/users
+   https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqq/auth/users
 
 2. Click "Add User" → Enter email and password
 
@@ -75,7 +75,7 @@ VALUES ('PASTE_USER_ID_HERE', 'your@email.com', 'Your Name');
 1. Get API key: https://dashboard.stripe.com/apikeys
 2. Add to Supabase secrets: `STRIPE_SECRET_KEY=sk_test_xxx`
 3. Configure webhook: https://dashboard.stripe.com/webhooks
-   - URL: `https://ntpjmirozltlgmdawuvw.supabase.co/functions/v1/stripe-subscription-webhooks`
+   - URL: `https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/stripe-subscription-webhooks`
    - Events: `invoice.paid`, `checkout.session.completed`, etc.
 4. Add webhook secret: `STRIPE_WEBHOOK_SECRET=whsec_xxx`
 
@@ -131,9 +131,9 @@ ANTHROPIC_API_KEY=sk-ant-xxx
 ## 🚀 Quick Reference
 
 **Your Supabase Project**:
-- URL: `https://ntpjmirozltlgmdawuvw.supabase.co`
-- Project ID: `nxyrbbnplmqvptdxqgqn`
-- Dashboard: https://supabase.com/dashboard/project/nxyrbbnplmqvptdxqgqn
+- URL: `https://wqdflwqepedqgbcwqqq.supabase.co`
+- Project ID: `wqdflwqepedqgbcwqqq`
+- Dashboard: https://supabase.com/dashboard/project/wqdflwqepedqgbcwqqq
 
 **Your Demo Organization**:
 - Name: "Alpha Vision Demo"
@@ -142,7 +142,7 @@ ANTHROPIC_API_KEY=sk-ant-xxx
 
 **Edge Functions Base URL**:
 ```
-https://ntpjmirozltlgmdawuvw.supabase.co/functions/v1/{function-name}
+https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/{function-name}
 ```
 
 **68 Active Functions Including**:

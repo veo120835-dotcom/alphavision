@@ -137,7 +137,7 @@ After each action handler, add a callback to Alpha Vision:
 1. After each handler, add **"HTTP Request"** node
 2. Configure:
    - **Method**: POST
-   - **URL**: `https://unoxusaqjdhcypsqnlsj.supabase.co/functions/v1/webhooks/v1/tools/callback`
+   - **URL**: `https://wqdflwqepedqgbcwqqq.supabase.co/functions/v1/webhooks/v1/tools/callback`
    - **Headers**:
      - `Content-Type`: `application/json`
      - `X-AV-Org-Id`: `{{ $json.org_id }}`
