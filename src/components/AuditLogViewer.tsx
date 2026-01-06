@@ -34,15 +34,26 @@ export default function AuditLogViewer() {
 
   const fetchLogs = async () => {
     try {
-      const { data, error } = await supabase
-        .from('deployment_audit_log')
+      const { data, error } = await (supabase as any)
+        .from('agent_audit_log')
         .select('*')
         .eq('organization_id', organization!.id)
-        .order('logged_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(500);
 
       if (error) throw error;
-      setLogs(data || []);
+      // Map to expected format
+      const mappedLogs: AuditEntry[] = (data || []).map((d: any) => ({
+        id: d.id,
+        deployment_id: d.id,
+        event_type: d.action_type,
+        event_data: d.input_data,
+        outcome: d.output_data,
+        roi_impact: 0,
+        logged_at: d.created_at,
+        decision_reasoning: d.action_description
+      }));
+      setLogs(mappedLogs);
     } catch (error) {
       console.error('Error fetching audit logs:', error);
     } finally {

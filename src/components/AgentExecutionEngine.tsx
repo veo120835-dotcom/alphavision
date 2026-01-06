@@ -155,7 +155,7 @@ export function AgentExecutionEngine() {
   const createTask = async (taskType: string, agentType: string, inputData: any = {}) => {
     if (!organization?.id) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('execution_tasks')
       .insert({
         organization_id: organization.id,
@@ -193,7 +193,7 @@ export function AgentExecutionEngine() {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Log execution
-    await supabase.from('agent_execution_logs').insert({
+    await (supabase as any).from('agent_execution_logs').insert({
       organization_id: organization.id,
       action_type: task.task_type,
       reasoning: `Executed ${task.task_type} task via Execution Engine`,

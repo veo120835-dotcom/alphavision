@@ -42,13 +42,13 @@ export function AnalyticsView() {
     
     try {
       // Fetch decisions
-      const { data: decisions } = await supabase
+      const { data: decisions } = await (supabase as any)
         .from('decisions')
-        .select('*, session:sessions!inner(organization_id)')
-        .eq('session.organization_id', organization.id);
+        .select('*')
+        .eq('organization_id', organization.id);
 
       // Fetch taste preferences
-      const { data: tastePrefs } = await supabase
+      const { data: tastePrefs } = await (supabase as any)
         .from('taste_preferences')
         .select('*')
         .eq('organization_id', organization.id)
@@ -56,7 +56,7 @@ export function AnalyticsView() {
         .limit(5);
 
       // Fetch founder state logs
-      const { data: founderLogs } = await supabase
+      const { data: founderLogs } = await (supabase as any)
         .from('founder_state_logs')
         .select('*')
         .eq('organization_id', organization.id)
@@ -64,7 +64,7 @@ export function AnalyticsView() {
         .limit(10);
 
       // Fetch decision outcomes
-      const { data: outcomes } = await supabase
+      const { data: outcomes } = await (supabase as any)
         .from('decision_outcomes')
         .select('*')
         .eq('organization_id', organization.id);

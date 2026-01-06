@@ -97,14 +97,14 @@ export function ApprovalDashboardView() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('approval_requests')
         .select('*')
         .eq('organization_id', organization.id)
-        .order('requested_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setRequests(data || []);
+      setRequests((data || []) as ApprovalRequest[]);
     } catch (error) {
       console.error('Error fetching requests:', error);
     } finally {
@@ -117,14 +117,12 @@ export function ApprovalDashboardView() {
     
     setProcessing(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('approval_requests')
         .update({
           status: decision,
-          decision,
-          decision_notes: decisionNotes,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: user.id
+          resolved_at: new Date().toISOString(),
+          approved_by: user.id
         })
         .eq('id', requestId);
 

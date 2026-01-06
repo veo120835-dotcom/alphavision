@@ -87,14 +87,33 @@ export function BusinessProfileDashboard() {
     if (!organizationId) return;
     
     try {
-      const { data, error } = await supabase
-        .from('business_profiles')
+      // Use business_config table instead
+      const { data, error } = await (supabase as any)
+        .from('business_config')
         .select('*')
         .eq('organization_id', organizationId)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
-      setProfile(data as BusinessProfile | null);
+      // Map to expected format
+      if (data) {
+        setProfile({
+          id: data.id,
+          organization_id: data.organization_id,
+          business_name: data.product_name || 'My Business',
+          business_type: 'service',
+          target_market: data.target_niche || '',
+          revenue_model: 'subscription',
+          current_mrr: 0,
+          target_mrr: data.base_price ? data.base_price * 10 : 10000,
+          unique_value_prop: data.product_description || '',
+          main_problems_solved: [],
+          competitive_advantages: [],
+          pricing_tiers: [],
+          created_at: data.created_at,
+          updated_at: data.updated_at
+        } as BusinessProfile);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {

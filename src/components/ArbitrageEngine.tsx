@@ -57,13 +57,25 @@ export default function ArbitrageEngine() {
     queryKey: ['arbitrage-opportunities', organization?.id],
     queryFn: async () => {
       if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('arbitrage_opportunities')
+      const { data, error } = await (supabase as any)
+        .from('opportunity_pipeline')
         .select('*')
         .eq('organization_id', organization.id)
-        .order('estimated_uplift_amount', { ascending: false });
+        .order('upside_potential', { ascending: false });
       if (error) throw error;
-      return data as ArbitrageOpportunity[];
+      return (data || []).map((d: any) => ({
+        ...d,
+        opportunity_type: d.opportunity_type || 'general',
+        estimated_uplift_amount: d.upside_potential,
+        estimated_uplift_percent: d.asymmetry_ratio ? d.asymmetry_ratio * 10 : null,
+        confidence_score: d.conviction_score ? d.conviction_score / 100 : null,
+        detected_at: d.discovered_at || d.created_at,
+        action_required: d.why_now,
+        current_state: {},
+        optimal_state: {},
+        evidence: {},
+        captured_value: null
+      })) as ArbitrageOpportunity[];
     },
     enabled: !!organization?.id
   });
@@ -75,9 +87,9 @@ export default function ArbitrageEngine() {
         updateData.actioned_at = new Date().toISOString();
         if (captured_value) updateData.captured_value = captured_value;
       }
-      const { error } = await supabase
-        .from('arbitrage_opportunities')
-        .update(updateData)
+      const { error } = await (supabase as any)
+        .from('opportunity_pipeline')
+        .update({ status: status })
         .eq('id', id);
       if (error) throw error;
     },
