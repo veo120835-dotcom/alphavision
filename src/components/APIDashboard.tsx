@@ -227,18 +227,15 @@ export function APIDashboard() {
     }
   }, [organization?.id]);
 
-  const fetchConnections = async () => {
+  const fetchConnections = () => {
     if (!organization?.id) return;
     setLoading(true);
     
     try {
-      const { data } = await supabase
-        .from('integrations')
-        .select('*')
-        .eq('organization_id', organization.id);
-
-      if (data) {
-        setConnections(data.map(i => ({
+      const stored = localStorage.getItem(`integrations_${organization.id}`);
+      if (stored) {
+        const data = JSON.parse(stored);
+        setConnections(data.map((i: any) => ({
           id: i.id,
           name: PROVIDERS.find(p => p.id === i.provider)?.name || i.provider,
           provider: i.provider,
@@ -255,13 +252,18 @@ export function APIDashboard() {
     }
   };
 
+  const saveConnections = (data: any[]) => {
+    if (!organization?.id) return;
+    localStorage.setItem(`integrations_${organization.id}`, JSON.stringify(data));
+  };
+
   const openProviderDialog = (provider: ProviderConfig) => {
     setSelectedProvider(provider);
     setFormData({});
     setDialogOpen(true);
   };
 
-  const handleSaveConnection = async () => {
+  const handleSaveConnection = () => {
     if (!organization?.id || !selectedProvider) return;
 
     // Validate required fields
@@ -275,28 +277,31 @@ export function APIDashboard() {
     }
 
     try {
-      // Check if connection exists
-      const existing = connections.find(c => c.provider === selectedProvider.id);
+      const stored = localStorage.getItem(`integrations_${organization.id}`);
+      const data = stored ? JSON.parse(stored) : [];
       
-      if (existing) {
-        await supabase
-          .from('integrations')
-          .update({
-            credentials_encrypted: JSON.stringify(formData),
-            status: 'connected',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existing.id);
+      const existingIdx = data.findIndex((c: any) => c.provider === selectedProvider.id);
+      
+      if (existingIdx >= 0) {
+        data[existingIdx] = {
+          ...data[existingIdx],
+          credentials_encrypted: JSON.stringify(formData),
+          status: 'connected',
+          updated_at: new Date().toISOString()
+        };
       } else {
-        await supabase.from('integrations').insert({
+        data.push({
+          id: crypto.randomUUID(),
           organization_id: organization.id,
           provider: selectedProvider.id,
           credentials_encrypted: JSON.stringify(formData),
           status: 'connected',
-          scopes: selectedProvider.fields.map(f => f.name)
+          scopes: selectedProvider.fields.map(f => f.name),
+          last_sync_at: null
         });
       }
 
+      saveConnections(data);
       toast.success(`${selectedProvider.name} connected successfully`);
       setDialogOpen(false);
       fetchConnections();
@@ -312,18 +317,26 @@ export function APIDashboard() {
     // Simulate testing
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    await supabase
-      .from('integrations')
-      .update({ last_sync_at: new Date().toISOString() })
-      .eq('id', connectionId);
+    const stored = localStorage.getItem(`integrations_${organization?.id}`);
+    if (stored) {
+      const data = JSON.parse(stored);
+      const updated = data.map((c: any) => 
+        c.id === connectionId ? { ...c, last_sync_at: new Date().toISOString() } : c
+      );
+      saveConnections(updated);
+    }
     
     setTesting(null);
     toast.success('Connection test successful');
     fetchConnections();
   };
 
-  const deleteConnection = async (connectionId: string) => {
-    await supabase.from('integrations').delete().eq('id', connectionId);
+  const deleteConnection = (connectionId: string) => {
+    const stored = localStorage.getItem(`integrations_${organization?.id}`);
+    if (stored) {
+      const data = JSON.parse(stored).filter((c: any) => c.id !== connectionId);
+      saveConnections(data);
+    }
     setConnections(prev => prev.filter(c => c.id !== connectionId));
     toast.success('Connection removed');
   };

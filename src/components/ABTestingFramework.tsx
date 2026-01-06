@@ -92,31 +92,26 @@ export function ABTestingFramework() {
     }
   }, [organization?.id]);
 
-  const loadTests = async () => {
+  const loadTests = () => {
     if (!organization?.id) return;
     
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from('memory_items')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .eq('type', 'ab_test')
-        .order('created_at', { ascending: false });
-
-      if (data) {
-        const parsedTests = data.map(item => ({
-          ...(item.content as any),
-          id: item.id,
-          created_at: item.created_at
-        }));
-        setTests(parsedTests);
+      const stored = localStorage.getItem(`ab_tests_${organization.id}`);
+      if (stored) {
+        setTests(JSON.parse(stored));
       }
     } catch (error) {
       console.error('Error loading tests:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const saveTests = (updatedTests: ABTest[]) => {
+    if (!organization?.id) return;
+    localStorage.setItem(`ab_tests_${organization.id}`, JSON.stringify(updatedTests));
+    setTests(updatedTests);
   };
 
   const createTest = async () => {
@@ -155,21 +150,8 @@ export function ABTestingFramework() {
     };
 
     try {
-      const { data, error } = await supabase
-        .from('memory_items')
-        .insert({
-          organization_id: organization.id,
-          type: 'ab_test',
-          title: newTest.name,
-          content: test as any,
-          tags: ['ab-test', newTest.metric]
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setTests(prev => [{ ...test, id: data.id, created_at: data.created_at }, ...prev]);
+      const testWithId = { ...test, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+      saveTests([testWithId, ...tests]);
       setNewTest({ name: '', hypothesis: '', metric: 'retention_3s', variantA: '', variantB: '' });
       setShowCreateForm(false);
       toast.success('A/B Test created!');
@@ -190,12 +172,7 @@ export function ABTestingFramework() {
     };
 
     try {
-      await supabase
-        .from('memory_items')
-        .update({ content: updated as any })
-        .eq('id', testId);
-
-      setTests(prev => prev.map(t => t.id === testId ? updated : t));
+      saveTests(tests.map(t => t.id === testId ? updated : t));
       toast.success('Test started!');
     } catch (error) {
       console.error('Error starting test:', error);
@@ -238,12 +215,7 @@ export function ABTestingFramework() {
     };
 
     try {
-      await supabase
-        .from('memory_items')
-        .update({ content: updated as any })
-        .eq('id', testId);
-
-      setTests(prev => prev.map(t => t.id === testId ? updated : t));
+      saveTests(tests.map(t => t.id === testId ? updated : t));
       
       if (isSignificant) {
         toast.success(`Test completed! Variant ${winningVariant.id} wins with ${confidence.toFixed(1)}% confidence`);
@@ -255,10 +227,9 @@ export function ABTestingFramework() {
     }
   };
 
-  const deleteTest = async (testId: string) => {
+  const deleteTest = (testId: string) => {
     try {
-      await supabase.from('memory_items').delete().eq('id', testId);
-      setTests(prev => prev.filter(t => t.id !== testId));
+      saveTests(tests.filter(t => t.id !== testId));
       toast.success('Test deleted');
     } catch (error) {
       console.error('Error deleting test:', error);

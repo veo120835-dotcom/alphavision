@@ -106,18 +106,14 @@ export function AIAgentRulesManager() {
     }
   }, [organizationId]);
 
-  const loadRules = async () => {
+  const loadRules = () => {
     if (!organizationId) return;
     
     try {
-      const { data, error } = await supabase
-        .from('ai_agent_rules')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .order('priority', { ascending: true });
-
-      if (error) throw error;
-      setRules(data || []);
+      const stored = localStorage.getItem(`ai_agent_rules_${organizationId}`);
+      if (stored) {
+        setRules(JSON.parse(stored));
+      }
     } catch (error) {
       console.error('Error loading rules:', error);
       toast.error('Failed to load AI rules');
@@ -126,7 +122,13 @@ export function AIAgentRulesManager() {
     }
   };
 
-  const handleSave = async () => {
+  const saveRules = (updatedRules: AIAgentRule[]) => {
+    if (!organizationId) return;
+    localStorage.setItem(`ai_agent_rules_${organizationId}`, JSON.stringify(updatedRules));
+    setRules(updatedRules);
+  };
+
+  const handleSave = () => {
     if (!organizationId || !formData.rule_name || !formData.rule_action) {
       toast.error('Please fill in all required fields');
       return;
@@ -134,74 +136,53 @@ export function AIAgentRulesManager() {
 
     try {
       if (editingRule) {
-        const { error } = await supabase
-          .from('ai_agent_rules')
-          .update({
-            rule_type: formData.rule_type,
-            rule_name: formData.rule_name,
-            rule_condition: formData.rule_condition,
-            rule_action: formData.rule_action,
-            priority: formData.priority,
-            is_active: formData.is_active,
-          })
-          .eq('id', editingRule.id);
-
-        if (error) throw error;
+        const updatedRules = rules.map(r => 
+          r.id === editingRule.id 
+            ? { ...r, ...formData }
+            : r
+        );
+        saveRules(updatedRules);
         toast.success('Rule updated');
       } else {
-        const { error } = await supabase
-          .from('ai_agent_rules')
-          .insert({
-            organization_id: organizationId,
-            rule_type: formData.rule_type,
-            rule_name: formData.rule_name,
-            rule_condition: formData.rule_condition,
-            rule_action: formData.rule_action,
-            priority: formData.priority,
-            is_active: formData.is_active,
-          });
-
-        if (error) throw error;
+        const newRule: AIAgentRule = {
+          id: crypto.randomUUID(),
+          organization_id: organizationId,
+          rule_type: formData.rule_type,
+          rule_name: formData.rule_name,
+          rule_condition: formData.rule_condition,
+          rule_action: formData.rule_action,
+          priority: formData.priority,
+          is_active: formData.is_active,
+          created_at: new Date().toISOString(),
+        };
+        saveRules([...rules, newRule]);
         toast.success('Rule created');
       }
 
       setShowCreateDialog(false);
       setEditingRule(null);
       resetForm();
-      loadRules();
     } catch (error: any) {
       console.error('Error saving rule:', error);
       toast.error(error.message || 'Failed to save rule');
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!confirm('Are you sure you want to delete this rule?')) return;
 
     try {
-      const { error } = await supabase
-        .from('ai_agent_rules')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      saveRules(rules.filter(r => r.id !== id));
       toast.success('Rule deleted');
-      loadRules();
     } catch (error) {
       console.error('Error deleting rule:', error);
       toast.error('Failed to delete rule');
     }
   };
 
-  const toggleRuleActive = async (rule: AIAgentRule) => {
+  const toggleRuleActive = (rule: AIAgentRule) => {
     try {
-      const { error } = await supabase
-        .from('ai_agent_rules')
-        .update({ is_active: !rule.is_active })
-        .eq('id', rule.id);
-
-      if (error) throw error;
-      loadRules();
+      saveRules(rules.map(r => r.id === rule.id ? { ...r, is_active: !r.is_active } : r));
     } catch (error) {
       console.error('Error toggling rule:', error);
     }

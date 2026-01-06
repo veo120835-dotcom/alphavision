@@ -166,11 +166,11 @@ export function AgentSwarmView() {
     setLoading(true);
     try {
       const [statesRes, logsRes] = await Promise.all([
-        supabase
+        (supabase as any)
           .from('agent_states')
           .select('*')
           .eq('organization_id', organization.id),
-        supabase
+        (supabase as any)
           .from('agent_execution_logs')
           .select('*')
           .eq('organization_id', organization.id)
@@ -178,8 +178,8 @@ export function AgentSwarmView() {
           .limit(50)
       ]);
 
-      if (statesRes.data) setAgentStates(statesRes.data);
-      if (logsRes.data) setExecutionLogs(logsRes.data);
+      if (statesRes.data) setAgentStates(statesRes.data as any);
+      if (logsRes.data) setExecutionLogs(logsRes.data as any);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {

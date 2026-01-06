@@ -104,7 +104,7 @@ export function AgentControlCenter() {
     if (!organization?.id) return;
     
     // Fetch from execution_tasks as missions
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('execution_tasks')
       .select('*')
       .eq('organization_id', organization.id)
@@ -140,13 +140,13 @@ export function AgentControlCenter() {
 
     const daysAgo = subDays(new Date(), 7);
     
-    const { data: revenueData } = await supabase
+    const { data: revenueData } = await (supabase as any)
       .from('revenue_events')
       .select('created_at, amount')
       .eq('organization_id', organization.id)
       .gte('created_at', daysAgo.toISOString());
 
-    const { data: leadsData } = await supabase
+    const { data: leadsData } = await (supabase as any)
       .from('leads')
       .select('created_at')
       .eq('organization_id', organization.id)
