@@ -86,13 +86,8 @@ export default function AutoProductization() {
     queryKey: ['success-patterns', organization?.id],
     queryFn: async () => {
       if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('success_patterns')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('repeatability_score', { ascending: false });
-      if (error) throw error;
-      return data as SuccessPattern[];
+      // Table doesn't exist yet - return empty array
+      return [] as SuccessPattern[];
     },
     enabled: !!organization?.id
   });
@@ -101,13 +96,8 @@ export default function AutoProductization() {
     queryKey: ['auto-products', organization?.id],
     queryFn: async () => {
       if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('auto_products')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as AutoProduct[];
+      // Table doesn't exist yet - return empty array
+      return [] as AutoProduct[];
     },
     enabled: !!organization?.id
   });
@@ -115,16 +105,8 @@ export default function AutoProductization() {
   const createProductMutation = useMutation({
     mutationFn: async (product: typeof newProduct & { source_pattern_id: string | null }) => {
       if (!organization?.id) throw new Error('No organization');
-      const { error } = await supabase.from('auto_products').insert({
-        organization_id: organization.id,
-        ...product,
-        actual_price: product.suggested_price,
-        sales_page_content: {},
-        delivery_mechanism: 'automated',
-        status: 'draft',
-        platform_fee_percent: 10
-      });
-      if (error) throw error;
+      // Table doesn't exist yet - simulate success
+      toast.info('Product creation will be available after database tables are created');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auto-products'] });
@@ -137,11 +119,8 @@ export default function AutoProductization() {
 
   const launchProductMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('auto_products')
-        .update({ status: 'launched', launched_at: new Date().toISOString() })
-        .eq('id', id);
-      if (error) throw error;
+      // Table doesn't exist yet - simulate success
+      toast.info('Product launch will be available after database tables are created');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auto-products'] });

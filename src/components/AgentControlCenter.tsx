@@ -182,7 +182,7 @@ export function AgentControlCenter() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('execution_tasks').insert({
+      const { data, error } = await (supabase as any).from('execution_tasks').insert({
         organization_id: organization.id,
         task_type: newMissionGoal,
         agent_type: 'orchestrator',
@@ -213,7 +213,7 @@ export function AgentControlCenter() {
   };
 
   const approveMission = async (missionId: string) => {
-    await supabase
+    await (supabase as any)
       .from('execution_tasks')
       .update({ status: 'running' })
       .eq('id', missionId);

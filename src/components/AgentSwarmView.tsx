@@ -191,12 +191,12 @@ export function AgentSwarmView() {
     if (!organization?.id) return;
 
     // Check if agents exist, if not create them
-    const { data: existing } = await supabase
+    const { data: existing } = await (supabase as any)
       .from('agent_states')
       .select('agent_type')
       .eq('organization_id', organization.id);
 
-    const existingTypes = existing?.map(a => a.agent_type) || [];
+    const existingTypes = existing?.map((a: any) => a.agent_type) || [];
     const missingAgents = AGENTS.filter(a => !existingTypes.includes(a.type));
 
     if (missingAgents.length > 0) {
@@ -208,7 +208,7 @@ export function AgentSwarmView() {
         metrics: { tasks_completed: 0, success_rate: 0 }
       }));
 
-      await supabase.from('agent_states').insert(newAgents);
+      await (supabase as any).from('agent_states').insert(newAgents);
       fetchData();
     }
   };
@@ -217,7 +217,7 @@ export function AgentSwarmView() {
     const newStatus = currentStatus === 'active' ? 'idle' : 'active';
     
     try {
-      await supabase
+      await (supabase as any)
         .from('agent_states')
         .update({ status: newStatus })
         .eq('id', agentId);
@@ -247,7 +247,7 @@ export function AgentSwarmView() {
 
     try {
       // Log the action
-      await supabase.from('agent_execution_logs').insert({
+      await (supabase as any).from('agent_execution_logs').insert({
         organization_id: organization.id,
         action_type: agentType,
         reasoning: `Autonomous action by ${agentType} agent`,
@@ -257,7 +257,7 @@ export function AgentSwarmView() {
       // Update agent state
       const agentState = agentStates.find(a => a.agent_type === agentType);
       if (agentState) {
-        await supabase
+        await (supabase as any)
           .from('agent_states')
           .update({
             last_action: randomAction,

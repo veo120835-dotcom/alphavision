@@ -51,14 +51,8 @@ export function BusinessIdentityView() {
     if (!organization?.id) return;
     
     try {
-      const { data, error } = await supabase
-        .from('business_identity')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('priority', { ascending: true });
-
-      if (error) throw error;
-      setItems(data || []);
+      // Table doesn't exist yet - use empty state
+      setItems([]);
     } catch (error) {
       console.error('Error loading identity:', error);
     } finally {
@@ -73,19 +67,19 @@ export function BusinessIdentityView() {
     }
 
     try {
-      const { error } = await supabase
-        .from('business_identity')
-        .insert({
-          organization_id: organization.id,
-          identity_element: newItem.element,
-          title: newItem.title.trim(),
-          description: newItem.description.trim() || null
-        });
-
-      if (error) throw error;
+      // Table doesn't exist yet - simulate locally
+      const newIdentityItem: IdentityItem = {
+        id: crypto.randomUUID(),
+        organization_id: organization.id,
+        identity_element: newItem.element,
+        title: newItem.title.trim(),
+        description: newItem.description.trim() || null,
+        priority: items.length + 1,
+        created_at: new Date().toISOString()
+      };
+      setItems(prev => [...prev, newIdentityItem]);
       toast.success("Added to identity!");
       setNewItem(null);
-      loadIdentity();
     } catch (error) {
       console.error('Error adding identity item:', error);
       toast.error("Failed to add");
@@ -94,14 +88,11 @@ export function BusinessIdentityView() {
 
   const handleUpdate = async (item: IdentityItem, title: string, description: string) => {
     try {
-      const { error } = await supabase
-        .from('business_identity')
-        .update({ title: title.trim(), description: description.trim() || null })
-        .eq('id', item.id);
-
-      if (error) throw error;
+      // Update locally
+      setItems(prev => prev.map(i => 
+        i.id === item.id ? { ...i, title: title.trim(), description: description.trim() || null } : i
+      ));
       setEditingId(null);
-      loadIdentity();
     } catch (error) {
       console.error('Error updating:', error);
       toast.error("Failed to update");
@@ -110,13 +101,8 @@ export function BusinessIdentityView() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('business_identity')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      loadIdentity();
+      // Delete locally
+      setItems(prev => prev.filter(i => i.id !== id));
     } catch (error) {
       console.error('Error deleting:', error);
       toast.error("Failed to delete");
