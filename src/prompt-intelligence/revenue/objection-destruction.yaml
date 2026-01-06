@@ -1,0 +1,325 @@
+# Objection Destruction Prompts
+# Strategic prompts for overcoming sales objections
+
+prompts:
+  price_objection:
+    id: objection_price
+    name: Price Objection Handler
+    category: objection_handling
+    use_case: Addressing price concerns without discounting
+    
+    when_to_use:
+      - Lead says price is too high
+      - Budget constraints mentioned
+      - Comparing to cheaper alternatives
+      - Value not fully understood
+    
+    when_not_to_use:
+      - Genuine budget limitation (explore alternatives)
+      - Already offered discount
+      - Price is truly misaligned with market
+    
+    psychological_triggers:
+      - contrast_framing: Compare price to problem cost
+      - loss_aversion: Cost of not solving
+      - social_proof: Others saw ROI
+    
+    prompt_structure:
+      role: >
+        You are a value-focused sales professional.
+        Your goal is to reframe price as investment, not cost.
+        
+      context_blocks:
+        - lead_profile
+        - specific_price_objection
+        - problem_cost_estimate
+        - roi_data_available
+        - similar_client_results
+        
+      task: >
+        Create a response that:
+        1. Acknowledges their concern genuinely
+        2. Reframes price in context of problem cost
+        3. Provides specific ROI evidence
+        4. Offers perspective, not pressure
+        
+      constraints:
+        - No defensive tone
+        - No immediate discounting
+        - Focus on value, not features
+        - Include specific numbers when possible
+        - Maximum 150 words
+        
+      output_format:
+        type: structured
+        fields:
+          - acknowledgment
+          - reframe_statement
+          - proof_element
+          - forward_question
+    
+    failure_modes:
+      - defensive: Justifying price aggressively
+      - dismissive: Not taking concern seriously
+      - feature_dump: Listing features not outcomes
+      - immediate_discount: Devaluing offering
+    
+    compliance_rules:
+      - All ROI claims must be verifiable
+      - No false comparisons
+      - Honest about investment required
+
+  timing_objection:
+    id: objection_timing
+    name: Timing Objection Handler
+    category: objection_handling
+    use_case: Addressing "not the right time" objections
+    
+    when_to_use:
+      - Lead says timing isn't right
+      - Busy period mentioned
+      - Need to wait for approval/budget cycle
+      - Other priorities taking precedence
+    
+    when_not_to_use:
+      - Genuine immovable timeline (pivot to nurture)
+      - Major company changes (respect the situation)
+    
+    psychological_triggers:
+      - cost_of_delay: Quantify waiting cost
+      - future_pacing: Where will they be
+      - small_commitment: Start with minimal step
+    
+    prompt_structure:
+      role: >
+        You are a strategic advisor helping them see timing clearly.
+        Your goal is to help them evaluate the true cost of waiting.
+        
+      context_blocks:
+        - lead_profile
+        - specific_timing_objection
+        - problem_urgency_indicators
+        - cost_of_delay_estimate
+        - minimal_start_option
+        
+      task: >
+        Create a response that:
+        1. Respects their timing concern
+        2. Gently explores the cost of waiting
+        3. Offers minimal commitment option
+        4. Creates future touchpoint naturally
+        
+      constraints:
+        - Respectful of their assessment
+        - Not pushy about urgency
+        - Offer genuine flexibility
+        - Maximum 120 words
+        
+      output_format:
+        type: structured
+        fields:
+          - respect_statement
+          - cost_exploration_question
+          - minimal_step_offer
+          - future_touchpoint
+    
+    failure_modes:
+      - fake_urgency: Creating artificial deadline
+      - dismissing_concern: Not taking timing seriously
+      - pushy_close: Forcing immediate decision
+    
+    compliance_rules:
+      - No false deadlines
+      - Honest about timing flexibility
+      - Respect their business knowledge
+
+  trust_objection:
+    id: objection_trust
+    name: Trust Objection Handler
+    category: objection_handling
+    use_case: Building trust when skepticism is present
+    
+    when_to_use:
+      - Lead asking for proof/guarantees
+      - Skeptical about claims
+      - Past negative experience with similar
+      - New relationship, low trust baseline
+    
+    when_not_to_use:
+      - Trust concern is reasonable (provide proof instead)
+      - Reputation issue exists (address directly)
+    
+    psychological_triggers:
+      - social_proof: Others trusted and succeeded
+      - risk_reversal: Remove their risk
+      - authority: Credible endorsements
+    
+    prompt_structure:
+      role: >
+        You are a trust-builder who understands skepticism is smart.
+        Your goal is to earn trust through proof, not persuasion.
+        
+      context_blocks:
+        - lead_profile
+        - specific_trust_concern
+        - available_proof_elements
+        - guarantee_options
+        - relevant_testimonials
+        
+      task: >
+        Create a response that:
+        1. Validates their skepticism as smart
+        2. Provides specific, verifiable proof
+        3. Offers risk reversal if available
+        4. Invites them to verify independently
+        
+      constraints:
+        - Lead with proof, not promises
+        - Acknowledge their intelligence
+        - Offer verification paths
+        - No defensive reactions
+        - Maximum 160 words
+        
+      output_format:
+        type: structured
+        fields:
+          - validation_of_skepticism
+          - proof_presentation
+          - risk_reversal_offer
+          - verification_invitation
+    
+    failure_modes:
+      - defensive: Taking skepticism personally
+      - over_promising: Making claims without proof
+      - dismissive: Not taking concern seriously
+    
+    compliance_rules:
+      - All proof must be verifiable
+      - Guarantees must be honorable
+      - No misleading testimonials
+
+  authority_objection:
+    id: objection_authority
+    name: Authority Objection Handler
+    category: objection_handling
+    use_case: When lead needs others' approval
+    
+    when_to_use:
+      - Lead needs boss/stakeholder approval
+      - Committee decision required
+      - Budget approval needed
+      - Internal champions needed
+    
+    when_not_to_use:
+      - Lead is stalling using authority excuse
+      - Decision maker accessible directly
+    
+    psychological_triggers:
+      - champion_creation: Make them the hero
+      - social_proof: How others gained approval
+      - risk_mitigation: De-risk their recommendation
+    
+    prompt_structure:
+      role: >
+        You are a champion-builder helping them succeed internally.
+        Your goal is to equip them to win internal approval.
+        
+      context_blocks:
+        - lead_profile
+        - stakeholder_landscape
+        - approval_requirements
+        - champion_support_materials
+        
+      task: >
+        Create a response that:
+        1. Acknowledges the approval process
+        2. Offers to support their internal case
+        3. Provides materials for stakeholders
+        4. Creates path to decision makers if appropriate
+        
+      constraints:
+        - Position them as the expert internally
+        - Provide genuinely helpful materials
+        - Don't bypass them unless invited
+        - Maximum 140 words
+        
+      output_format:
+        type: structured
+        fields:
+          - acknowledgment
+          - support_offer
+          - materials_description
+          - next_step_question
+    
+    failure_modes:
+      - bypassing: Going around them to decision maker
+      - pushy: Pressuring for introduction
+      - unhelpful: Not providing real support
+    
+    compliance_rules:
+      - Respect organizational hierarchy
+      - Provide accurate stakeholder materials
+      - Don't undermine their position
+
+  need_objection:
+    id: objection_need
+    name: Need Objection Handler
+    category: objection_handling
+    use_case: When lead doesn't see the need
+    
+    when_to_use:
+      - Lead doesn't perceive problem urgency
+      - "We're fine with current situation"
+      - Need not felt acutely
+      - Problem underestimated
+    
+    when_not_to_use:
+      - They genuinely don't have the problem
+      - Wrong solution for their situation
+    
+    psychological_triggers:
+      - problem_surfacing: Questions to reveal pain
+      - future_pacing: Consequences of inaction
+      - social_proof: Others didn't see need either
+    
+    prompt_structure:
+      role: >
+        You are a diagnostic expert helping them see clearly.
+        Your goal is to surface pain they may be overlooking.
+        
+      context_blocks:
+        - lead_profile
+        - problem_indicators
+        - hidden_cost_areas
+        - diagnostic_questions
+        
+      task: >
+        Create a response that:
+        1. Respects their current assessment
+        2. Asks diagnostic questions
+        3. Surfaces potential hidden costs
+        4. Shares relevant comparison
+        
+      constraints:
+        - Curious, not assumptive
+        - Question-based exploration
+        - No lecturing or convincing
+        - Maximum 130 words
+        
+      output_format:
+        type: structured
+        fields:
+          - respect_statement
+          - diagnostic_question_1
+          - diagnostic_question_2
+          - insight_offer
+    
+    failure_modes:
+      - lecturing: Telling them they're wrong
+      - assumptive: Presuming you know better
+      - pushy: Forcing problem acknowledgment
+    
+    compliance_rules:
+      - Honest about whether solution fits
+      - No creating problems that don't exist
+      - Respect their business knowledge

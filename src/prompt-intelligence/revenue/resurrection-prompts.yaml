@@ -1,0 +1,406 @@
+# Resurrection Prompts
+# Psychologically precise prompts for reactivating dormant leads
+
+prompts:
+  soft_check_in:
+    id: resurrection_soft_check_in
+    name: Soft Check-In
+    category: resurrection
+    use_case: Re-engaging leads with minimal pressure
+    
+    when_to_use:
+      - Lead has been dormant 7-30 days
+      - Previous interaction was positive
+      - No specific objection recorded
+      - High relationship quality score
+    
+    when_not_to_use:
+      - Lead explicitly asked not to be contacted
+      - Multiple previous soft check-ins ignored
+      - Known competitor engagement
+      - Price was final objection
+    
+    psychological_triggers:
+      - curiosity: Create open loop about their situation
+      - reciprocity: Offer value without asking
+      - autonomy: Respect their decision space
+    
+    prompt_structure:
+      role: >
+        You are a relationship-focused business development professional.
+        Your goal is to reconnect with a dormant lead without any sales pressure.
+        
+      context_blocks:
+        - lead_name
+        - company_name
+        - last_interaction_summary
+        - time_since_contact
+        - previous_discussion_topics
+        
+      task: >
+        Write a brief, genuine check-in message that:
+        1. Acknowledges the time that has passed naturally
+        2. Shows genuine curiosity about their situation
+        3. Offers light value without any expectation
+        4. Leaves door open for response
+        
+      constraints:
+        - Maximum 100 words
+        - No sales language
+        - No urgency or pressure
+        - No mention of your product/service unless relevant
+        - Warm, professional tone
+        - One clear but low-pressure CTA
+        
+      output_format:
+        type: structured
+        fields:
+          - subject_line
+          - email_body
+          - follow_up_timing
+    
+    failure_modes:
+      - too_salesy: Adding pitch language defeats the purpose
+      - too_long: Should feel like a quick note, not a letter
+      - fake_concern: Generic language feels insincere
+      - hidden_agenda: Obvious attempts to restart sales cycle
+    
+    compliance_rules:
+      - No false claims about checking in
+      - No manufactured urgency
+      - Respect previous communication preferences
+    
+    personalization_hooks:
+      - previous_topic: Reference specific discussion point
+      - industry_news: Relevant development in their space
+      - mutual_connection: Shared contact or event
+      
+    evaluation:
+      rubrics:
+        - authenticity: Does it feel genuine?
+        - brevity: Is it respectfully short?
+        - warmth: Does it maintain relationship?
+        - non_pressure: Zero sales pressure?
+      minimum_score: 0.8
+
+  value_reminder:
+    id: resurrection_value_reminder
+    name: Value Reminder
+    category: resurrection
+    use_case: Resurfacing value proposition with fresh angle
+    
+    when_to_use:
+      - Lead showed strong interest initially
+      - Price or timing was main objection
+      - New success story available
+      - 30-60 days since last contact
+    
+    when_not_to_use:
+      - Trust was primary objection
+      - Lead explicitly declined
+      - No new value to add
+      - Relationship damaged
+    
+    psychological_triggers:
+      - social_proof: Others succeeded
+      - loss_aversion: Cost of continued waiting
+      - authority: Expert perspective
+    
+    prompt_structure:
+      role: >
+        You are a strategic advisor helping a prospect see new value.
+        Your approach is educational, not persuasive.
+        
+      context_blocks:
+        - lead_profile
+        - original_interest_area
+        - objection_history
+        - relevant_success_story
+        - time_since_contact
+        
+      task: >
+        Create a value-focused message that:
+        1. References their original goal or challenge
+        2. Introduces fresh perspective or proof
+        3. Connects new information to their situation
+        4. Invites further exploration without pressure
+        
+      constraints:
+        - Maximum 150 words
+        - Lead with value, not ask
+        - Include specific proof element
+        - Respectful of their previous decision
+        - Clear but optional CTA
+        
+      output_format:
+        type: structured
+        fields:
+          - subject_line
+          - hook
+          - value_bridge
+          - proof_element
+          - soft_close
+    
+    failure_modes:
+      - rehashing: Repeating old pitch
+      - irrelevant_proof: Success story doesn't match
+      - pushy_close: Aggressive CTA
+      - ignoring_objection: Not acknowledging past concerns
+    
+    compliance_rules:
+      - All claims must be verifiable
+      - Success metrics must be accurate
+      - No exaggeration of results
+    
+    personalization_hooks:
+      - industry_match: Similar company success
+      - role_match: Similar role achieved results
+      - problem_match: Same challenge solved
+      
+    evaluation:
+      rubrics:
+        - relevance: New info matches their needs
+        - proof_quality: Credible evidence
+        - respect: Acknowledges their autonomy
+        - clarity: Easy to understand value
+      minimum_score: 0.75
+
+  problem_resurface:
+    id: resurrection_problem_resurface
+    name: Problem Resurface
+    category: resurrection
+    use_case: Bringing attention back to unsolved problem
+    
+    when_to_use:
+      - Problem is likely ongoing
+      - Lead underestimated urgency initially
+      - 45+ days dormancy
+      - No competitor solution adopted
+    
+    when_not_to_use:
+      - Lead found alternative solution
+      - Problem may have resolved naturally
+      - Relationship is fragile
+      - Multiple resurface attempts failed
+    
+    psychological_triggers:
+      - loss_aversion: Cost of continued problem
+      - future_pacing: Where will this lead
+      - curiosity: What has changed
+    
+    prompt_structure:
+      role: >
+        You are a concerned advisor who understands their ongoing challenge.
+        Your goal is to compassionately resurface the problem's cost.
+        
+      context_blocks:
+        - lead_profile
+        - original_problem_statement
+        - problem_cost_estimate
+        - time_elapsed
+        - industry_context
+        
+      task: >
+        Write a message that:
+        1. Gently references the challenge they mentioned
+        2. Acknowledges time has passed
+        3. Poses thoughtful question about current state
+        4. Offers fresh perspective or insight
+        
+      constraints:
+        - Maximum 120 words
+        - No guilt or manipulation
+        - Genuine curiosity, not assumption
+        - Empathetic tone
+        - Question-based engagement
+        
+      output_format:
+        type: structured
+        fields:
+          - subject_line
+          - empathetic_opening
+          - problem_reference
+          - curiosity_question
+          - value_offer
+    
+    failure_modes:
+      - fear_mongering: Exaggerating consequences
+      - assumption: Presuming problem still exists
+      - guilt_trip: Making them feel bad
+      - aggressive: Pushing for response
+    
+    compliance_rules:
+      - No catastrophizing
+      - Honest problem assessment
+      - Respect their judgment
+    
+    personalization_hooks:
+      - specific_pain: Their exact words about problem
+      - cost_metric: Quantified impact mentioned
+      - timeline: Original urgency discussed
+      
+    evaluation:
+      rubrics:
+        - empathy: Genuine understanding
+        - relevance: Problem still applicable
+        - respect: Not presumptuous
+        - helpfulness: Offers real insight
+      minimum_score: 0.80
+
+  direct_ask:
+    id: resurrection_direct_ask
+    name: Direct Ask
+    category: resurrection
+    use_case: Clear, respectful closure request
+    
+    when_to_use:
+      - Multiple follow-ups without response
+      - Need to clear pipeline
+      - Lead was genuinely interested
+      - 60+ days with no engagement
+    
+    when_not_to_use:
+      - First or second follow-up
+      - Relationship is new
+      - Lead expressed frustration
+      - High-value opportunity needing patience
+    
+    psychological_triggers:
+      - autonomy: Respecting their choice
+      - commitment: Binary decision prompt
+      - reciprocity: Giving them closure too
+    
+    prompt_structure:
+      role: >
+        You are a respectful professional seeking clarity.
+        Your goal is honest closure, not manipulation.
+        
+      context_blocks:
+        - lead_name
+        - company
+        - follow_up_count
+        - original_interest
+        
+      task: >
+        Write a brief, direct message that:
+        1. Acknowledges multiple attempts
+        2. Respects their silence
+        3. Asks for simple yes/no clarity
+        4. Makes either answer okay
+        
+      constraints:
+        - Maximum 60 words
+        - Binary choice only
+        - No guilt
+        - No pressure
+        - Genuine acceptance of "no"
+        
+      output_format:
+        type: structured
+        fields:
+          - subject_line
+          - brief_context
+          - direct_question
+          - respectful_close
+    
+    failure_modes:
+      - passive_aggressive: Subtle guilt
+      - fake_acceptance: Not really okay with no
+      - too_wordy: Defeats directness
+      - ultimatum_feel: Threatening closure
+    
+    compliance_rules:
+      - Genuine acceptance of either answer
+      - No false scarcity
+      - Respectful tone
+    
+    personalization_hooks:
+      - minimal: Keep it simple and direct
+      
+    evaluation:
+      rubrics:
+        - directness: Clear and brief
+        - respect: Truly okay with no
+        - honesty: No hidden agenda
+        - brevity: Under 60 words
+      minimum_score: 0.85
+
+  pattern_interrupt:
+    id: resurrection_pattern_interrupt
+    name: Pattern Interrupt
+    category: resurrection
+    use_case: Breaking through email fatigue
+    
+    when_to_use:
+      - Standard approaches not working
+      - Creative industry or personality
+      - Lead likely receiving many emails
+      - Previous engagement suggests openness
+    
+    when_not_to_use:
+      - Conservative industry
+      - Formal relationship established
+      - Lead preference for traditional communication
+      - Risk-averse personality profile
+    
+    psychological_triggers:
+      - curiosity: Unexpected opening
+      - pattern_break: Different from other emails
+      - authenticity: Refreshingly honest
+    
+    prompt_structure:
+      role: >
+        You are a creative communicator breaking through noise.
+        Your goal is to stand out without being gimmicky.
+        
+      context_blocks:
+        - lead_profile
+        - industry
+        - previous_communication_style
+        - personality_indicators
+        
+      task: >
+        Create an unexpected message that:
+        1. Opens differently than typical sales emails
+        2. Quickly pivots to relevance
+        3. Maintains professionalism despite creativity
+        4. Ends with intriguing invitation
+        
+      constraints:
+        - Maximum 80 words
+        - Unexpected but not weird
+        - Professional creativity
+        - Quick relevance pivot
+        - Memorable without gimmick
+        
+      output_format:
+        type: structured
+        fields:
+          - subject_line_unconventional
+          - pattern_break_opening
+          - relevance_pivot
+          - intriguing_close
+    
+    failure_modes:
+      - too_quirky: Crosses into unprofessional
+      - forced_creativity: Feels try-hard
+      - no_relevance: All sizzle no substance
+      - inappropriate: Misreads audience
+    
+    compliance_rules:
+      - Maintain professionalism
+      - No offensive or risky content
+      - Appropriate for business context
+    
+    personalization_hooks:
+      - industry_specific_humor: Relevant to their world
+      - shared_experience: Common professional challenge
+      - timing_relevant: Current event or season
+      
+    evaluation:
+      rubrics:
+        - originality: Stands out
+        - appropriateness: Right for audience
+        - relevance: Quick connection to value
+        - memorability: Would remember this
+      minimum_score: 0.70

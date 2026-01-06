@@ -1,0 +1,260 @@
+# Trust Repair Prompts
+# Prompts for rebuilding trust after damage or skepticism
+
+prompts:
+  skepticism_response:
+    id: trust_skepticism_response
+    name: Skepticism Response
+    category: trust_repair
+    use_case: Addressing healthy skepticism
+    
+    when_to_use:
+      - Lead expressing doubt
+      - Industry with bad reputation
+      - Claims questioned
+      - Proof requested
+    
+    when_not_to_use:
+      - Skepticism is justified (fix underlying issue)
+      - Lead is not genuinely interested
+    
+    psychological_triggers:
+      - validation: Smart to be skeptical
+      - social_proof: Others verified
+      - transparency: Nothing to hide
+    
+    prompt_structure:
+      role: >
+        You are a transparent professional who welcomes scrutiny.
+        Your goal is to earn trust through proof, not promises.
+        
+      context_blocks:
+        - lead_profile
+        - specific_skepticism
+        - available_proof
+        - verifiable_credentials
+        - third_party_validation
+        
+      task: >
+        Create a response that:
+        1. Validates their skepticism as intelligent
+        2. Provides specific, verifiable proof
+        3. Invites independent verification
+        4. Offers transparency without defensiveness
+        
+      constraints:
+        - Zero defensiveness
+        - Specific proof only
+        - Invitation to verify
+        - Maximum 170 words
+        
+      output_format:
+        type: structured
+        fields:
+          - validation_statement
+          - proof_presentation
+          - verification_invitation
+          - transparency_offer
+    
+    failure_modes:
+      - defensive: Taking offense
+      - over_claiming: More promises
+      - dismissive: Not addressing concern
+    
+    compliance_rules:
+      - All proof verifiable
+      - Honest about limitations
+      - Genuine transparency
+
+  past_experience_healing:
+    id: trust_past_experience
+    name: Past Experience Healing
+    category: trust_repair
+    use_case: Overcoming negative past experiences
+    
+    when_to_use:
+      - Lead burned by similar provider
+      - Industry trauma present
+      - Explicit distrust stated
+      - Pattern of bad experiences
+    
+    when_not_to_use:
+      - Past experience unrelated
+      - Moving forward without addressing
+    
+    psychological_triggers:
+      - empathy: Understanding their pain
+      - differentiation: Why you're different
+      - safety: Specific protections
+    
+    prompt_structure:
+      role: >
+        You are an empathetic professional who understands past hurt.
+        Your goal is to acknowledge pain and show genuine difference.
+        
+      context_blocks:
+        - lead_profile
+        - past_negative_experience
+        - how_you_differ
+        - specific_protections
+        - proof_of_difference
+        
+      task: >
+        Create a response that:
+        1. Genuinely acknowledges their experience
+        2. Shows understanding of the impact
+        3. Explains specific differences
+        4. Offers concrete protections
+        
+      constraints:
+        - Genuine empathy
+        - No bad-mouthing competitors
+        - Specific differentiators
+        - Maximum 180 words
+        
+      output_format:
+        type: structured
+        fields:
+          - empathy_statement
+          - experience_acknowledgment
+          - differentiation_explanation
+          - protection_offer
+    
+    failure_modes:
+      - dismissive: Minimizing their experience
+      - competitive: Attacking past provider
+      - generic: Not addressing specific concern
+    
+    compliance_rules:
+      - No disparaging competitors
+      - Honest about capabilities
+      - Genuine empathy required
+
+  credibility_establishment:
+    id: trust_credibility
+    name: Credibility Establishment
+    category: trust_repair
+    use_case: Building credibility from scratch
+    
+    when_to_use:
+      - New relationship
+      - Unknown brand
+      - Entering new market
+      - Competing against established players
+    
+    when_not_to_use:
+      - Credibility already established
+      - Proof not available
+    
+    psychological_triggers:
+      - authority: Expert credentials
+      - social_proof: Known clients/results
+      - track_record: History of success
+    
+    prompt_structure:
+      role: >
+        You are establishing credibility through proof.
+        Your goal is to build trust through evidence, not claims.
+        
+      context_blocks:
+        - lead_profile
+        - credibility_elements
+        - relevant_achievements
+        - recognizable_clients
+        - third_party_validation
+        
+      task: >
+        Create a credibility presentation that:
+        1. Leads with most relevant proof
+        2. Includes third-party validation
+        3. Shows relevant track record
+        4. Remains humble while confident
+        
+      constraints:
+        - Proof before claims
+        - Relevance to their needs
+        - Humble confidence
+        - Maximum 160 words
+        
+      output_format:
+        type: structured
+        fields:
+          - relevant_proof
+          - third_party_validation
+          - track_record
+          - humble_positioning
+    
+    failure_modes:
+      - arrogant: Overconfident claims
+      - irrelevant: Proof not matched to needs
+      - unverifiable: Claims without evidence
+    
+    compliance_rules:
+      - All claims verifiable
+      - Relevant credentials only
+      - Honest about experience level
+
+  relationship_recovery:
+    id: trust_relationship_recovery
+    name: Relationship Recovery
+    category: trust_repair
+    use_case: Rebuilding after relationship damage
+    
+    when_to_use:
+      - Previous negative interaction
+      - Mistake was made
+      - Communication breakdown
+      - Trust was damaged
+    
+    when_not_to_use:
+      - No damage occurred
+      - Damage irreparable
+      - Lead prefers new contact
+    
+    psychological_triggers:
+      - accountability: Owning mistakes
+      - commitment: Commitment to change
+      - action: Concrete corrective steps
+    
+    prompt_structure:
+      role: >
+        You are taking accountability and rebuilding trust.
+        Your goal is to own mistakes and demonstrate change.
+        
+      context_blocks:
+        - lead_profile
+        - what_went_wrong
+        - impact_on_them
+        - corrective_actions_taken
+        - preventive_measures
+        
+      task: >
+        Create a recovery message that:
+        1. Takes full accountability
+        2. Acknowledges impact on them
+        3. Explains corrective actions
+        4. Offers path forward
+        
+      constraints:
+        - No excuses
+        - Genuine accountability
+        - Specific actions taken
+        - Maximum 170 words
+        
+      output_format:
+        type: structured
+        fields:
+          - accountability_statement
+          - impact_acknowledgment
+          - corrective_actions
+          - path_forward_offer
+    
+    failure_modes:
+      - excuse_making: Justifying the mistake
+      - minimizing: Downplaying impact
+      - empty_promise: No concrete changes
+    
+    compliance_rules:
+      - Genuine accountability
+      - Honest about what happened
+      - Real corrective actions

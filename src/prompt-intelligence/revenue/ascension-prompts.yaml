@@ -1,0 +1,328 @@
+# Ascension Prompts
+# Prompts for upgrading and expanding client relationships
+
+prompts:
+  upsell_natural:
+    id: ascension_upsell_natural
+    name: Natural Upsell
+    category: ascension
+    use_case: Introducing higher-tier options naturally
+    
+    when_to_use:
+      - Client showing success with current tier
+      - Growth indicators present
+      - Natural expansion opportunity
+      - Client requesting more
+    
+    when_not_to_use:
+      - Client struggling with current solution
+      - Relationship is strained
+      - No genuine additional value
+    
+    psychological_triggers:
+      - success_continuation: Build on momentum
+      - social_proof: Others who upgraded
+      - exclusivity: Access to more
+    
+    prompt_structure:
+      role: >
+        You are a growth partner recognizing expansion opportunity.
+        Your goal is to serve their growing needs naturally.
+        
+      context_blocks:
+        - client_profile
+        - current_success_metrics
+        - growth_indicators
+        - next_tier_benefits
+        - similar_client_upgrades
+        
+      task: >
+        Create an upsell approach that:
+        1. Celebrates their current success
+        2. Identifies natural next step
+        3. Shows relevant expanded benefits
+        4. Makes transition feel logical
+        
+      constraints:
+        - Success-based, not pushy
+        - Genuine additional value
+        - Natural progression
+        - Maximum 150 words
+        
+      output_format:
+        type: structured
+        fields:
+          - success_acknowledgment
+          - opportunity_identification
+          - expanded_benefits
+          - next_step_suggestion
+    
+    failure_modes:
+      - premature: Pushing before success
+      - irrelevant: Benefits don't match needs
+      - pushy: Aggressive upselling
+    
+    compliance_rules:
+      - Genuine additional value
+      - Success prerequisite
+      - No pressure tactics
+
+  cross_sell_strategic:
+    id: ascension_cross_sell
+    name: Strategic Cross-Sell
+    category: ascension
+    use_case: Introducing complementary offerings
+    
+    when_to_use:
+      - Related need identified
+      - Complementary solution valuable
+      - Trust established
+      - Logical connection exists
+    
+    when_not_to_use:
+      - No genuine connection
+      - Client overwhelmed
+      - Forcing unrelated products
+    
+    psychological_triggers:
+      - completion: Fill the gap
+      - efficiency: Bundled value
+      - trust_transfer: Existing relationship
+    
+    prompt_structure:
+      role: >
+        You are identifying complementary value opportunities.
+        Your goal is to serve related needs they may have.
+        
+      context_blocks:
+        - client_profile
+        - current_solution_usage
+        - related_needs_identified
+        - complementary_offerings
+        - integration_benefits
+        
+      task: >
+        Create a cross-sell approach that:
+        1. Connects to their existing success
+        2. Identifies related need
+        3. Shows natural integration
+        4. Emphasizes combined value
+        
+      constraints:
+        - Logical connection required
+        - Value focus
+        - Not overwhelming
+        - Maximum 140 words
+        
+      output_format:
+        type: structured
+        fields:
+          - current_success_connection
+          - related_need_identification
+          - complementary_solution
+          - combined_value_proposition
+    
+    failure_modes:
+      - forced_connection: Unrelated products
+      - overwhelming: Too many options
+      - disconnected: No logical flow
+    
+    compliance_rules:
+      - Genuine complementary value
+      - Clear connection to needs
+      - No bundling pressure
+
+  renewal_excellence:
+    id: ascension_renewal
+    name: Renewal Excellence
+    category: ascension
+    use_case: Securing and expanding renewals
+    
+    when_to_use:
+      - Renewal period approaching
+      - Strong value delivered
+      - Expansion opportunity exists
+      - Relationship is positive
+    
+    when_not_to_use:
+      - Value not delivered
+      - Issues unresolved
+      - Client dissatisfied
+    
+    psychological_triggers:
+      - continuity: Maintain momentum
+      - loss_aversion: What they'd lose
+      - achievement: Progress made
+    
+    prompt_structure:
+      role: >
+        You are ensuring continuity and exploring expansion.
+        Your goal is to renew and potentially grow the relationship.
+        
+      context_blocks:
+        - client_profile
+        - value_delivered_summary
+        - results_achieved
+        - future_opportunities
+        - expansion_options
+        
+      task: >
+        Create a renewal approach that:
+        1. Summarizes value delivered
+        2. Celebrates results achieved
+        3. Outlines future potential
+        4. Presents renewal/expansion options
+        
+      constraints:
+        - Value-led conversation
+        - Forward-looking
+        - Choice architecture
+        - Maximum 180 words
+        
+      output_format:
+        type: structured
+        fields:
+          - value_summary
+          - results_celebration
+          - future_opportunity
+          - renewal_options
+    
+    failure_modes:
+      - transactional: Just about renewal
+      - presumptuous: Assuming renewal
+      - value_gap: Not demonstrating worth
+    
+    compliance_rules:
+      - Accurate value reporting
+      - Clear renewal terms
+      - Honest about results
+
+  referral_request:
+    id: ascension_referral
+    name: Referral Request
+    category: ascension
+    use_case: Asking for referrals at right moment
+    
+    when_to_use:
+      - Client expressing satisfaction
+      - Significant result achieved
+      - Strong relationship exists
+      - Natural conversation moment
+    
+    when_not_to_use:
+      - Client not satisfied
+      - Relationship new
+      - Awkward timing
+    
+    psychological_triggers:
+      - reciprocity: Value exchanged
+      - identity: They're a connector
+      - social: Helping their network
+    
+    prompt_structure:
+      role: >
+        You are inviting clients to share their success.
+        Your goal is to earn referrals through excellence.
+        
+      context_blocks:
+        - client_profile
+        - success_achieved
+        - relationship_quality
+        - referral_value_proposition
+        - ease_of_referral
+        
+      task: >
+        Create a referral request that:
+        1. Acknowledges their success
+        2. Frames referral as helping others
+        3. Makes process easy
+        4. Shows appreciation in advance
+        
+      constraints:
+        - Non-pressuring ask
+        - Easy process
+        - Genuine appreciation
+        - Maximum 120 words
+        
+      output_format:
+        type: structured
+        fields:
+          - success_acknowledgment
+          - referral_framing
+          - easy_process_explanation
+          - appreciation_statement
+    
+    failure_modes:
+      - pushy: Aggressive ask
+      - entitled: Expecting referrals
+      - complicated: Difficult process
+    
+    compliance_rules:
+      - No referral pressure
+      - Easy opt-out
+      - Genuine appreciation
+
+  expansion_conversation:
+    id: ascension_expansion
+    name: Expansion Conversation
+    category: ascension
+    use_case: Strategic expansion discussion
+    
+    when_to_use:
+      - Multiple expansion opportunities
+      - Strategic planning phase
+      - Budget planning period
+      - Relationship is strong
+    
+    when_not_to_use:
+      - No clear expansion value
+      - Client constrained
+      - Timing inappropriate
+    
+    psychological_triggers:
+      - partnership: Growing together
+      - vision: Shared future
+      - efficiency: Consolidated value
+    
+    prompt_structure:
+      role: >
+        You are having a strategic growth conversation.
+        Your goal is to explore expansion that serves their goals.
+        
+      context_blocks:
+        - client_profile
+        - current_engagement
+        - growth_opportunities
+        - strategic_alignment
+        - expansion_options
+        
+      task: >
+        Create an expansion conversation that:
+        1. Reviews current partnership value
+        2. Explores their strategic goals
+        3. Identifies alignment opportunities
+        4. Presents expansion pathways
+        
+      constraints:
+        - Strategic perspective
+        - Goal alignment
+        - Multiple pathways
+        - Maximum 200 words
+        
+      output_format:
+        type: structured
+        fields:
+          - partnership_review
+          - goal_exploration
+          - alignment_identification
+          - expansion_pathways
+    
+    failure_modes:
+      - transactional: Just selling more
+      - misaligned: Not matching goals
+      - overwhelming: Too many options
+    
+    compliance_rules:
+      - Strategic alignment required
+      - Clear value for each option
+      - No pressure tactics

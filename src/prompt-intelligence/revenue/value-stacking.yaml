@@ -1,0 +1,264 @@
+# Value Stacking Prompts
+# Prompts for building irresistible value perception
+
+prompts:
+  roi_articulation:
+    id: value_roi_articulation
+    name: ROI Articulation
+    category: value_stacking
+    use_case: Clearly communicating return on investment
+    
+    when_to_use:
+      - Price objection anticipated or raised
+      - Analytical buyer profile
+      - Budget justification needed
+      - Comparison shopping happening
+    
+    when_not_to_use:
+      - Emotional buyer (lead with outcomes)
+      - Early stage exploration
+      - ROI not quantifiable
+    
+    psychological_triggers:
+      - loss_aversion: Cost of not having
+      - contrast: Investment vs return
+      - social_proof: Others' ROI achieved
+    
+    prompt_structure:
+      role: >
+        You are an ROI specialist who translates value into numbers.
+        Your goal is to make the investment case crystal clear.
+        
+      context_blocks:
+        - lead_profile
+        - their_problem_metrics
+        - solution_impact_data
+        - similar_client_results
+        - investment_amount
+        
+      task: >
+        Create an ROI presentation that:
+        1. Quantifies their current problem cost
+        2. Projects clear return timeline
+        3. Includes conservative and optimistic scenarios
+        4. Compares to cost of inaction
+        
+      constraints:
+        - Use their numbers when available
+        - Conservative estimates
+        - Clear time-to-value
+        - Verifiable claims only
+        - Maximum 200 words
+        
+      output_format:
+        type: structured
+        fields:
+          - current_cost_analysis
+          - projected_return
+          - timeline_to_value
+          - comparison_statement
+    
+    failure_modes:
+      - inflated_numbers: Unrealistic projections
+      - complexity: Too many variables
+      - unverifiable: Claims without proof
+    
+    compliance_rules:
+      - Conservative projections
+      - Verifiable methodology
+      - Honest about variables
+
+  outcome_stacking:
+    id: value_outcome_stacking
+    name: Outcome Stacking
+    category: value_stacking
+    use_case: Building comprehensive value picture
+    
+    when_to_use:
+      - Need to justify premium pricing
+      - Competing against cheaper alternatives
+      - Complex value proposition
+      - Multiple stakeholder benefits
+    
+    when_not_to_use:
+      - Simple transactional sale
+      - Value is self-evident
+      - Early exploration stage
+    
+    psychological_triggers:
+      - anchoring: Large benefit first
+      - cumulative_effect: Building perception
+      - future_pacing: Life with solution
+    
+    prompt_structure:
+      role: >
+        You are a value architect who sees the full picture.
+        Your goal is to build comprehensive value understanding.
+        
+      context_blocks:
+        - lead_profile
+        - all_benefit_categories
+        - stakeholder_impacts
+        - secondary_benefits
+        - long_term_advantages
+        
+      task: >
+        Create a value stack that:
+        1. Leads with most compelling outcome
+        2. Layers additional benefits strategically
+        3. Includes often-overlooked advantages
+        4. Quantifies where possible
+        
+      constraints:
+        - Logical benefit flow
+        - Each benefit substantiated
+        - Not overwhelming
+        - Maximum 250 words
+        
+      output_format:
+        type: structured
+        fields:
+          - primary_outcome
+          - secondary_benefits
+          - hidden_advantages
+          - cumulative_impact
+    
+    failure_modes:
+      - kitchen_sink: Too many benefits
+      - unsubstantiated: Claims without support
+      - irrelevant: Benefits they don't care about
+    
+    compliance_rules:
+      - All claims verifiable
+      - No exaggeration
+      - Relevant to their needs
+
+  cost_of_inaction:
+    id: value_cost_of_inaction
+    name: Cost of Inaction
+    category: value_stacking
+    use_case: Illustrating consequences of not acting
+    
+    when_to_use:
+      - Lead underestimating urgency
+      - Comfortable with status quo
+      - Timing objection present
+      - Decision paralysis
+    
+    when_not_to_use:
+      - Creating false urgency
+      - Problem is minor
+      - Lead already understands urgency
+    
+    psychological_triggers:
+      - loss_aversion: What they'll lose
+      - future_pacing: Negative trajectory
+      - compound_effect: Growing cost
+    
+    prompt_structure:
+      role: >
+        You are a strategic forecaster showing future impact.
+        Your goal is to honestly illustrate trajectory of inaction.
+        
+      context_blocks:
+        - lead_profile
+        - current_problem_metrics
+        - growth_trajectory
+        - competitive_implications
+        - compound_effects
+        
+      task: >
+        Create an inaction analysis that:
+        1. Projects current situation forward
+        2. Identifies compound effects
+        3. Shows competitive implications
+        4. Remains honest and helpful
+        
+      constraints:
+        - Honest projections only
+        - No fear mongering
+        - Based on their data
+        - Maximum 180 words
+        
+      output_format:
+        type: structured
+        fields:
+          - current_state
+          - 6_month_projection
+          - 12_month_projection
+          - competitive_impact
+    
+    failure_modes:
+      - fear_mongering: Exaggerated consequences
+      - manipulation: False urgency
+      - disconnected: Not based on their reality
+    
+    compliance_rules:
+      - Honest projections
+      - Based on verifiable trends
+      - Not catastrophizing
+
+  risk_reversal:
+    id: value_risk_reversal
+    name: Risk Reversal
+    category: value_stacking
+    use_case: Removing barriers to decision
+    
+    when_to_use:
+      - Trust concerns present
+      - Risk-averse buyer
+      - High-stakes decision
+      - Competitive differentiation needed
+    
+    when_not_to_use:
+      - Cannot honor guarantees
+      - Trust is already high
+      - Low-stakes decision
+    
+    psychological_triggers:
+      - safety: Removing risk
+      - trust: Confidence signal
+      - commitment: Provider's confidence
+    
+    prompt_structure:
+      role: >
+        You are a confidence builder who removes barriers.
+        Your goal is to make the decision feel safe.
+        
+      context_blocks:
+        - lead_profile
+        - specific_concerns
+        - available_guarantees
+        - proof_elements
+        - success_track_record
+        
+      task: >
+        Create a risk reversal presentation that:
+        1. Acknowledges their specific concerns
+        2. Presents concrete risk mitigation
+        3. Explains why you can offer guarantees
+        4. Shows track record of delivering
+        
+      constraints:
+        - Only offer what you can deliver
+        - Clear terms
+        - Confidence without arrogance
+        - Maximum 160 words
+        
+      output_format:
+        type: structured
+        fields:
+          - concern_acknowledgment
+          - guarantee_presentation
+          - confidence_explanation
+          - proof_of_delivery
+    
+    failure_modes:
+      - over_promising: Can't deliver
+      - vague_terms: Unclear guarantees
+      - arrogant: Dismissing concerns
+    
+    compliance_rules:
+      - Only promise deliverables
+      - Clear terms and conditions
+      - Honest about limitations
