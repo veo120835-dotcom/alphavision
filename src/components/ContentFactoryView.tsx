@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -13,25 +11,19 @@ import {
   Sparkles, 
   Calendar, 
   Plus, 
-  Play, 
-  Clock, 
   Zap,
   BookOpen,
   MessageCircle,
   Palette,
   Search,
   RefreshCw,
-  Send,
-  CheckCircle2,
-  AlertCircle,
   Target
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { TrendScouterDashboard } from "./TrendScouterDashboard";
 import { ContentScheduler } from "./ContentScheduler";
+import { useMockStorage, generateMockId, generateMockTimestamp } from "@/hooks/useMockStorage";
 
 interface TrendTopic {
   id: string;
@@ -61,132 +53,38 @@ const VARIATIONS = [
   { id: 'aesthetic', label: 'Aesthetic', icon: Palette, color: 'text-purple-400', description: 'Vibe-based visual content' },
 ];
 
-const PLATFORMS = ['TikTok', 'Instagram', 'YouTube', 'Twitter'];
-
 export function ContentFactoryView() {
   const { organization } = useOrganization();
-  const [trends, setTrends] = useState<TrendTopic[]>([]);
-  const [contentQueue, setContentQueue] = useState<ContentQueueItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: trends, setData: setTrends, loading: trendsLoading } = useMockStorage<TrendTopic>(
+    `trend_topics_${organization?.id}`,
+    []
+  );
+  const { data: contentQueue, setData: setContentQueue, loading: queueLoading } = useMockStorage<ContentQueueItem>(
+    `content_queue_${organization?.id}`,
+    []
+  );
   const [selectedTrend, setSelectedTrend] = useState<TrendTopic | null>(null);
   const [newTrendTopic, setNewTrendTopic] = useState("");
   const [generatingContent, setGeneratingContent] = useState(false);
 
-  useEffect(() => {
-    if (organization?.id) {
-      fetchData();
-
-      // Subscribe to real-time content queue updates
-      const contentChannel = supabase
-        .channel('content-queue-realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'content_queue',
-            filter: `organization_id=eq.${organization.id}`
-          },
-          (payload) => {
-            console.log('Content queue update:', payload);
-            if (payload.eventType === 'INSERT') {
-              setContentQueue(prev => [payload.new as ContentQueueItem, ...prev]);
-            } else if (payload.eventType === 'UPDATE') {
-              setContentQueue(prev => 
-                prev.map(c => c.id === (payload.new as ContentQueueItem).id ? payload.new as ContentQueueItem : c)
-              );
-            } else if (payload.eventType === 'DELETE') {
-              setContentQueue(prev => prev.filter(c => c.id !== (payload.old as any).id));
-            }
-          }
-        )
-        .subscribe();
-
-      // Subscribe to real-time trend updates
-      const trendChannel = supabase
-        .channel('trend-topics-realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'trend_topics',
-            filter: `organization_id=eq.${organization.id}`
-          },
-          (payload) => {
-            console.log('Trend topic update:', payload);
-            if (payload.eventType === 'INSERT') {
-              setTrends(prev => [payload.new as TrendTopic, ...prev]);
-            } else if (payload.eventType === 'UPDATE') {
-              setTrends(prev => 
-                prev.map(t => t.id === (payload.new as TrendTopic).id ? payload.new as TrendTopic : t)
-              );
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(contentChannel);
-        supabase.removeChannel(trendChannel);
-      };
-    }
-  }, [organization?.id]);
-
-  const fetchData = async () => {
-    if (!organization?.id) return;
-    
-    setLoading(true);
-    try {
-      const [trendsRes, queueRes] = await Promise.all([
-        supabase
-          .from('trend_topics')
-          .select('*')
-          .eq('organization_id', organization.id)
-          .order('discovered_at', { ascending: false })
-          .limit(20),
-        supabase
-          .from('content_queue')
-          .select('*')
-          .eq('organization_id', organization.id)
-          .order('created_at', { ascending: false })
-          .limit(50)
-      ]);
-
-      if (trendsRes.data) setTrends(trendsRes.data);
-      if (queueRes.data) setContentQueue(queueRes.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = trendsLoading || queueLoading;
 
   const addTrendTopic = async () => {
     if (!organization?.id || !newTrendTopic.trim()) return;
 
-    try {
-      const { data, error } = await supabase
-        .from('trend_topics')
-        .insert({
-          organization_id: organization.id,
-          topic: newTrendTopic.trim(),
-          source: 'manual',
-          relevance_score: 80,
-          status: 'new'
-        })
-        .select()
-        .single();
+    const newTrend: TrendTopic = {
+      id: generateMockId(),
+      topic: newTrendTopic.trim(),
+      source: 'manual',
+      relevance_score: 80,
+      status: 'new',
+      used_count: 0,
+      discovered_at: generateMockTimestamp()
+    };
 
-      if (error) throw error;
-      
-      setTrends(prev => [data, ...prev]);
-      setNewTrendTopic("");
-      toast.success("Trend topic added!");
-    } catch (error) {
-      console.error('Error adding trend:', error);
-      toast.error("Failed to add trend topic");
-    }
+    setTrends([newTrend, ...trends]);
+    setNewTrendTopic("");
+    toast.success("Trend topic added!");
   };
 
   const generateContentVariations = async (trend: TrendTopic) => {
@@ -195,83 +93,50 @@ export function ContentFactoryView() {
     setGeneratingContent(true);
     setSelectedTrend(trend);
 
-    try {
-      // Generate 3 variations for each platform
-      const variations = VARIATIONS.map(v => ({
-        organization_id: organization.id,
-        trend_topic_id: trend.id,
-        content_type: 'video',
-        variation: v.id,
-        title: `${trend.topic} - ${v.label} Version`,
-        hook_text: generateHook(trend.topic, v.id),
-        script: generateScript(trend.topic, v.id),
-        platform: 'TikTok',
-        status: 'draft'
-      }));
+    // Simulate content generation
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-      const { data, error } = await supabase
-        .from('content_queue')
-        .insert(variations)
-        .select();
+    const variations: ContentQueueItem[] = VARIATIONS.map(v => ({
+      id: generateMockId(),
+      content_type: 'video',
+      variation: v.id,
+      title: `${trend.topic} - ${v.label} Version`,
+      hook_text: generateHook(trend.topic, v.id),
+      script: generateScript(trend.topic, v.id),
+      platform: 'TikTok',
+      scheduled_at: null,
+      status: 'draft'
+    }));
 
-      if (error) throw error;
+    // Update trend used count
+    setTrends(trends.map(t => 
+      t.id === trend.id 
+        ? { ...t, used_count: (t.used_count || 0) + 1, status: 'used' }
+        : t
+    ));
 
-      // Update trend used count
-      await supabase
-        .from('trend_topics')
-        .update({ 
-          used_count: (trend.used_count || 0) + 1,
-          last_used_at: new Date().toISOString(),
-          status: 'used'
-        })
-        .eq('id', trend.id);
-
-      setContentQueue(prev => [...(data || []), ...prev]);
-      toast.success("Generated 3 content variations!");
-      fetchData();
-    } catch (error) {
-      console.error('Error generating content:', error);
-      toast.error("Failed to generate content");
-    } finally {
-      setGeneratingContent(false);
-      setSelectedTrend(null);
-    }
+    setContentQueue([...variations, ...contentQueue]);
+    toast.success("Generated 3 content variations!");
+    setGeneratingContent(false);
+    setSelectedTrend(null);
   };
 
   const generateHook = (topic: string, variation: string): string => {
-    const hooks = {
+    const hooks: Record<string, string> = {
       educational: `Here are 5 things nobody tells you about ${topic}...`,
       controversial: `Unpopular opinion: Most people are doing ${topic} completely wrong`,
       aesthetic: `POV: You finally mastered ${topic} ✨`
     };
-    return hooks[variation as keyof typeof hooks] || topic;
+    return hooks[variation] || topic;
   };
 
   const generateScript = (topic: string, variation: string): string => {
-    const scripts = {
+    const scripts: Record<string, string> = {
       educational: `[HOOK] ${topic} breakdown\n\n1. First point...\n2. Second point...\n3. Third point...\n\n[CTA] Follow for more tips!`,
       controversial: `[HOOK] Hot take on ${topic}\n\nHere's why everyone is wrong...\n\n[CTA] Comment your thoughts below!`,
       aesthetic: `[HOOK] Aesthetic ${topic} moment\n\n[Visual sequence]\n\n[CTA] Save this for later ✨`
     };
-    return scripts[variation as keyof typeof scripts] || topic;
-  };
-
-  const scheduleContent = async (contentId: string, scheduledAt: Date) => {
-    try {
-      await supabase
-        .from('content_queue')
-        .update({ 
-          scheduled_at: scheduledAt.toISOString(),
-          status: 'scheduled'
-        })
-        .eq('id', contentId);
-
-      fetchData();
-      toast.success("Content scheduled!");
-    } catch (error) {
-      console.error('Error scheduling content:', error);
-      toast.error("Failed to schedule content");
-    }
+    return scripts[variation] || topic;
   };
 
   const getStatusColor = (status: string) => {
@@ -285,16 +150,6 @@ export function ContentFactoryView() {
     }
   };
 
-  const getVariationIcon = (variation: string) => {
-    const v = VARIATIONS.find(x => x.id === variation);
-    return v ? v.icon : Sparkles;
-  };
-
-  const getVariationColor = (variation: string) => {
-    const v = VARIATIONS.find(x => x.id === variation);
-    return v ? v.color : 'text-muted-foreground';
-  };
-
   return (
     <div className="h-full overflow-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -302,7 +157,7 @@ export function ContentFactoryView() {
           <h1 className="text-3xl font-serif font-bold gradient-text">Content Factory</h1>
           <p className="text-muted-foreground mt-1">Trend scouting, multi-version generation & scheduling</p>
         </div>
-        <Button onClick={fetchData} variant="outline" size="sm">
+        <Button variant="outline" size="sm">
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
         </Button>
@@ -469,9 +324,9 @@ export function ContentFactoryView() {
                         ))}
                         
                         {variationContent.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            No {variation.label.toLowerCase()} content yet
-                          </p>
+                          <div className="text-center py-6 text-muted-foreground text-sm">
+                            No content generated yet
+                          </div>
                         )}
                       </div>
                     </ScrollArea>
@@ -484,80 +339,7 @@ export function ContentFactoryView() {
 
         {/* Schedule Tab */}
         <TabsContent value="schedule" className="mt-6">
-          <Card className="card-glow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary" />
-                Content Queue
-              </CardTitle>
-              <CardDescription>Schedule and manage your content pipeline</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[500px]">
-                <div className="space-y-3">
-                  {contentQueue.map((content, idx) => {
-                    const VariationIcon = getVariationIcon(content.variation);
-                    
-                    return (
-                      <motion.div
-                        key={content.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.03 }}
-                        className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                      >
-                        <div className={`p-2 rounded-lg bg-background ${getVariationColor(content.variation)}`}>
-                          <VariationIcon className="w-5 h-5" />
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{content.title}</p>
-                          <p className="text-sm text-muted-foreground truncate">{content.hook_text}</p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{content.platform}</Badge>
-                          <Badge className={getStatusColor(content.status)} variant="secondary">
-                            {content.status}
-                          </Badge>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {content.status === 'draft' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const scheduledAt = new Date();
-                                scheduledAt.setHours(scheduledAt.getHours() + 1);
-                                scheduleContent(content.id, scheduledAt);
-                              }}
-                            >
-                              <Clock className="w-4 h-4 mr-1" />
-                              Schedule
-                            </Button>
-                          )}
-                          {content.scheduled_at && (
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(content.scheduled_at), 'MMM d, h:mm a')}
-                            </span>
-                          )}
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-
-                  {contentQueue.length === 0 && !loading && (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Calendar className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg">No content in queue</p>
-                      <p className="text-sm">Generate content from trending topics first</p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+          <ContentScheduler />
         </TabsContent>
       </Tabs>
     </div>

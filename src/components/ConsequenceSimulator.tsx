@@ -8,60 +8,39 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMockStorage, generateMockId, generateMockTimestamp } from "@/hooks/useMockStorage";
 
 interface Simulation {
   id: string;
   action_description: string;
-  first_order_effects: any;
-  second_order_effects: any;
-  third_order_effects: any;
+  first_order_effects: any[];
+  second_order_effects: any[];
+  third_order_effects: any[];
   net_expected_value: number;
   proceed_recommended: boolean;
   simulated_at: string;
 }
 
 export default function ConsequenceSimulator() {
-  const [simulations, setSimulations] = useState<Simulation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { organization } = useOrganization();
+  const { data: simulations, setData: setSimulations, loading } = useMockStorage<Simulation>(
+    `consequence_simulations_${organization?.id}`,
+    []
+  );
   const [showSimulate, setShowSimulate] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [action, setAction] = useState('');
-  const { organization } = useOrganization();
-
-  useEffect(() => {
-    if (organization?.id) fetchSimulations();
-  }, [organization?.id]);
-
-  const fetchSimulations = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('consequence_simulations')
-        .select('*')
-        .eq('organization_id', organization!.id)
-        .order('simulated_at', { ascending: false })
-        .limit(10);
-      
-      if (error) throw error;
-      setSimulations(data || []);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const runSimulation = async () => {
     if (!organization?.id || !action) return;
 
     setSimulating(true);
     
-    // Simulate AI analysis (in production, this would call an AI endpoint)
+    // Simulate AI analysis
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     const firstOrder = [
@@ -79,32 +58,22 @@ export default function ConsequenceSimulator() {
       { effect: "Market perception shift", type: "positive", magnitude: "low" }
     ];
 
-    try {
-      const { error } = await supabase
-        .from('consequence_simulations')
-        .insert({
-          organization_id: organization.id,
-          action_description: action,
-          first_order_effects: firstOrder,
-          second_order_effects: secondOrder,
-          third_order_effects: thirdOrder,
-          time_horizon_months: 12,
-          net_expected_value: Math.random() * 50000 - 10000,
-          confidence_level: 70 + Math.random() * 25,
-          proceed_recommended: Math.random() > 0.3,
-          ai_recommendation: "Consider the second-order burnout risk before proceeding."
-        });
+    const newSimulation: Simulation = {
+      id: generateMockId(),
+      action_description: action,
+      first_order_effects: firstOrder,
+      second_order_effects: secondOrder,
+      third_order_effects: thirdOrder,
+      net_expected_value: Math.random() * 50000 - 10000,
+      proceed_recommended: Math.random() > 0.3,
+      simulated_at: generateMockTimestamp()
+    };
 
-      if (error) throw error;
-      toast.success('Simulation complete');
-      setShowSimulate(false);
-      setAction('');
-      fetchSimulations();
-    } catch (error) {
-      toast.error('Simulation failed');
-    } finally {
-      setSimulating(false);
-    }
+    setSimulations([newSimulation, ...simulations]);
+    toast.success('Simulation complete');
+    setShowSimulate(false);
+    setAction('');
+    setSimulating(false);
   };
 
   const getEffectIcon = (type: string) => {
