@@ -20,8 +20,7 @@ import {
   Instagram,
   Youtube
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useOrganization } from "@/hooks/useOrganization";
+import { useMockStorage } from "@/hooks/useMockStorage";
 import { toast } from "sonner";
 import { format, addDays, startOfWeek, addHours, isSameDay } from "date-fns";
 
@@ -46,99 +45,52 @@ const PLATFORMS = [
   { id: 'threads', name: 'Threads', icon: Send, color: 'text-gray-400' },
 ];
 
-const TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', 
-  '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
+const DEMO_CONTENT: ScheduledContent[] = [
+  {
+    id: '1',
+    title: 'Morning Motivation Post',
+    content_type: 'reel',
+    variation: 'A',
+    platform: 'instagram',
+    scheduled_at: new Date(Date.now() + 86400000).toISOString(),
+    status: 'scheduled',
+    hook_text: 'The secret no one talks about...'
+  },
+  {
+    id: '2',
+    title: 'Product Demo',
+    content_type: 'video',
+    variation: 'B',
+    platform: 'youtube',
+    scheduled_at: new Date(Date.now() + 172800000).toISOString(),
+    status: 'scheduled',
+    hook_text: 'Watch this before buying...'
+  }
 ];
 
 export function ContentScheduler() {
-  const { organization } = useOrganization();
-  const [scheduledContent, setScheduledContent] = useState<ScheduledContent[]>([]);
+  const { data: scheduledContent, setData: setScheduledContent, loading } = useMockStorage<ScheduledContent>('content_queue', DEMO_CONTENT);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'week' | 'calendar'>('week');
 
-  useEffect(() => {
-    if (organization?.id) {
-      fetchContent();
-
-      const channel = supabase
-        .channel('scheduler-realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'content_queue',
-            filter: `organization_id=eq.${organization.id}`
-          },
-          (payload) => {
-            if (payload.eventType === 'INSERT') {
-              setScheduledContent(prev => [...prev, payload.new as ScheduledContent]);
-            } else if (payload.eventType === 'UPDATE') {
-              setScheduledContent(prev => 
-                prev.map(c => c.id === (payload.new as ScheduledContent).id ? payload.new as ScheduledContent : c)
-              );
-            } else if (payload.eventType === 'DELETE') {
-              setScheduledContent(prev => prev.filter(c => c.id !== (payload.old as any).id));
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [organization?.id]);
-
-  const fetchContent = async () => {
-    if (!organization?.id) return;
-    setLoading(false);
-    
-    const { data, error } = await supabase
-      .from('content_queue')
-      .select('*')
-      .eq('organization_id', organization.id)
-      .not('scheduled_at', 'is', null)
-      .order('scheduled_at', { ascending: true });
-
-    if (data) setScheduledContent(data);
-    setLoading(false);
-  };
-
   const scheduleContent = async (contentId: string, scheduledAt: Date) => {
-    try {
-      await supabase
-        .from('content_queue')
-        .update({ 
-          scheduled_at: scheduledAt.toISOString(),
-          status: 'scheduled'
-        })
-        .eq('id', contentId);
-      
-      toast.success('Content scheduled!');
-      fetchContent();
-    } catch (error) {
-      toast.error('Failed to schedule');
-    }
+    const updated = scheduledContent.map(c => 
+      c.id === contentId 
+        ? { ...c, scheduled_at: scheduledAt.toISOString(), status: 'scheduled' }
+        : c
+    );
+    setScheduledContent(updated);
+    toast.success('Content scheduled!');
   };
 
   const publishContent = async (contentId: string) => {
-    try {
-      await supabase
-        .from('content_queue')
-        .update({ 
-          status: 'published',
-          published_at: new Date().toISOString()
-        })
-        .eq('id', contentId);
-      
-      toast.success('Content published!');
-      fetchContent();
-    } catch (error) {
-      toast.error('Failed to publish');
-    }
+    const updated = scheduledContent.map(c => 
+      c.id === contentId 
+        ? { ...c, status: 'published' }
+        : c
+    );
+    setScheduledContent(updated);
+    toast.success('Content published!');
   };
 
   const getContentForDate = (date: Date) => {
@@ -289,7 +241,6 @@ export function ContentScheduler() {
                             {dayContent.map(content => {
                               const platform = getPlatformInfo(content.platform);
                               const PlatformIcon = platform.icon;
-                              const statusBadge = getStatusBadge(content.status);
                               
                               return (
                                 <motion.div

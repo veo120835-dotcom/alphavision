@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,21 +22,18 @@ import {
   Zap
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useOrganization } from '@/hooks/useOrganization';
-import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
-import { Json } from '@/integrations/supabase/types';
 
 interface DailyBriefData {
   id: string;
   brief_date: string;
   executive_summary: string | null;
-  priority_decisions: Json;
-  revenue_alerts: Json;
-  market_signals: Json;
-  pending_approvals: Json;
+  priority_decisions: PriorityDecision[];
+  revenue_alerts: RevenueAlert[];
+  market_signals: string[];
+  pending_approvals: string[];
   recommended_focus: string | null;
-  time_allocation: Json;
+  time_allocation: Record<string, number>;
   viewed_at: string | null;
   acted_on: boolean;
 }
@@ -56,73 +51,35 @@ interface RevenueAlert {
   amount?: number;
 }
 
-export default function DailyBrief() {
-  const { organization } = useOrganization();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [completedItems, setCompletedItems] = useState<Set<number>>(new Set());
+const DEMO_BRIEF: DailyBriefData = {
+  id: '1',
+  brief_date: format(new Date(), 'yyyy-MM-dd'),
+  executive_summary: 'Your pipeline is healthy with 3 hot leads ready to close. Focus on follow-ups today for maximum impact.',
+  priority_decisions: [
+    { decision: 'Review pricing proposal for Enterprise client', urgency: 'high', impact: 'high', deadline: 'Today 3pm' },
+    { decision: 'Approve marketing budget increase', urgency: 'medium', impact: 'high' },
+    { decision: 'Schedule Q1 planning session', urgency: 'low', impact: 'medium' }
+  ],
+  revenue_alerts: [
+    { type: 'opportunity', message: 'Hot lead ready to close', amount: 15000 },
+    { type: 'renewal', message: 'Subscription renewal due', amount: 5000 }
+  ],
+  market_signals: ['Competitor launched new feature', 'Industry trend shifting'],
+  pending_approvals: ['Marketing spend', 'New hire request'],
+  recommended_focus: 'Revenue-generating activities',
+  time_allocation: { 'deep_work': 40, 'meetings': 25, 'admin': 15, 'learning': 20 },
+  viewed_at: null,
+  acted_on: false
+};
 
-  const today = format(new Date(), 'yyyy-MM-dd');
+export default function DailyBrief() {
+  const [brief, setBrief] = useState<DailyBriefData | null>(DEMO_BRIEF);
+  const [completedItems, setCompletedItems] = useState<Set<number>>(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const GreetingIcon = hour < 12 ? Coffee : hour < 18 ? Sun : Moon;
-
-  const { data: brief, isLoading } = useQuery({
-    queryKey: ['daily-brief', organization?.id, user?.id, today],
-    queryFn: async () => {
-      if (!organization?.id || !user?.id) return null;
-      const { data, error } = await supabase
-        .from('daily_briefs')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .eq('user_id', user.id)
-        .eq('brief_date', today)
-        .maybeSingle();
-      if (error) throw error;
-      return data as DailyBriefData | null;
-    },
-    enabled: !!organization?.id && !!user?.id
-  });
-
-  const markViewedMutation = useMutation({
-    mutationFn: async () => {
-      if (!brief?.id) return;
-      const { error } = await supabase
-        .from('daily_briefs')
-        .update({ viewed_at: new Date().toISOString() })
-        .eq('id', brief.id);
-      if (error) throw error;
-    }
-  });
-
-  useEffect(() => {
-    if (brief && !brief.viewed_at) {
-      markViewedMutation.mutate();
-    }
-  }, [brief?.id]);
-
-  const getPriorityDecisions = (): PriorityDecision[] => {
-    if (!brief?.priority_decisions) return [];
-    const decisions = brief.priority_decisions;
-    if (Array.isArray(decisions)) return decisions as unknown as PriorityDecision[];
-    return [];
-  };
-
-  const getRevenueAlerts = (): RevenueAlert[] => {
-    if (!brief?.revenue_alerts) return [];
-    const alerts = brief.revenue_alerts;
-    if (Array.isArray(alerts)) return alerts as unknown as RevenueAlert[];
-    return [];
-  };
-
-  const getTimeAllocation = (): Record<string, number> => {
-    if (!brief?.time_allocation) return {};
-    const allocation = brief.time_allocation;
-    if (typeof allocation === 'object' && allocation !== null && !Array.isArray(allocation)) {
-      return allocation as Record<string, number>;
-    }
-    return {};
-  };
 
   const toggleItem = (idx: number) => {
     const newCompleted = new Set(completedItems);
@@ -143,9 +100,9 @@ export default function DailyBrief() {
     }
   };
 
-  const priorityDecisions = getPriorityDecisions();
-  const revenueAlerts = getRevenueAlerts();
-  const timeAllocation = getTimeAllocation();
+  const priorityDecisions = brief?.priority_decisions || [];
+  const revenueAlerts = brief?.revenue_alerts || [];
+  const timeAllocation = brief?.time_allocation || {};
 
   if (isLoading) {
     return (

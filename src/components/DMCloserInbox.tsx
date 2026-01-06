@@ -31,8 +31,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
-import { useOrganization } from "@/hooks/useOrganization";
+import { useMockStorage, generateMockId } from "@/hooks/useMockStorage";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -92,22 +91,57 @@ const INTENT_ICONS: Record<string, typeof Target> = {
   cold: Clock,
 };
 
+const DEMO_CONVERSATIONS: DMConversation[] = [
+  {
+    id: '1',
+    lead_id: 'lead-1',
+    platform: 'instagram',
+    status: 'active',
+    last_message_at: new Date(Date.now() - 3600000).toISOString(),
+    messages_count: 5,
+    sentiment_score: 75,
+    ai_handling_mode: 'suggest',
+    lead: {
+      id: 'lead-1',
+      name: 'Alex Johnson',
+      email: 'alex@example.com',
+      intent_score: 65,
+      source: 'Instagram DM'
+    }
+  },
+  {
+    id: '2',
+    lead_id: 'lead-2',
+    platform: 'twitter',
+    status: 'active',
+    last_message_at: new Date(Date.now() - 7200000).toISOString(),
+    messages_count: 3,
+    sentiment_score: 50,
+    ai_handling_mode: 'suggest',
+    lead: {
+      id: 'lead-2',
+      name: 'Sarah Chen',
+      email: 'sarah@example.com',
+      intent_score: 45,
+      source: 'Twitter DM'
+    }
+  }
+];
+
 export function DMCloserInbox() {
-  const { organization } = useOrganization();
-  const [conversations, setConversations] = useState<DMConversation[]>([]);
+  const { data: conversations, setData: setConversations, loading } = useMockStorage<DMConversation>('dm_conversations', DEMO_CONVERSATIONS);
   const [selectedConversation, setSelectedConversation] = useState<DMConversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [suggestion, setSuggestion] = useState<CloserSuggestion | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (organization?.id) {
-      fetchConversations();
+    if (conversations.length > 0 && !selectedConversation) {
+      setSelectedConversation(conversations[0]);
     }
-  }, [organization?.id]);
+  }, [conversations]);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -119,33 +153,7 @@ export function DMCloserInbox() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const fetchConversations = async () => {
-    if (!organization?.id) return;
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from('dm_conversations')
-      .select(`
-        *,
-        lead:leads(id, name, email, intent_score, source)
-      `)
-      .eq('organization_id', organization.id)
-      .order('last_message_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching conversations:', error);
-    } else {
-      setConversations(data || []);
-      if (data && data.length > 0 && !selectedConversation) {
-        setSelectedConversation(data[0]);
-      }
-    }
-    setLoading(false);
-  };
-
   const loadConversationMessages = async (conversationId: string) => {
-    // Simulate loading messages from DM conversation
-    // In production, this would fetch from the actual DM platform
     const demoMessages: Message[] = [
       {
         id: '1',
@@ -172,48 +180,29 @@ export function DMCloserInbox() {
   };
 
   const generateAISuggestion = async (conversationHistory: Message[]) => {
-    if (!organization?.id || !selectedConversation?.lead) return;
+    if (!selectedConversation?.lead) return;
     setGenerating(true);
 
-    try {
-      const { data, error } = await supabase.functions.invoke('closer-agent', {
-        body: {
-          conversationHistory: conversationHistory.map(m => ({
-            role: m.role,
-            content: m.content
-          })),
-          leadData: {
-            id: selectedConversation.lead.id,
-            name: selectedConversation.lead.name,
-            source: selectedConversation.lead.source,
-            intent_score: selectedConversation.lead.intent_score
-          },
-          productInfo: {
-            highTicket: { name: 'Alpha Vision Enterprise', price: 5000 },
-            midTicket: { name: 'Alpha Vision Pro', price: 997 },
-            downsell: { name: 'Revenue Playbook', price: 27 }
-          },
-          organizationId: organization.id
-        }
+    // Simulate AI suggestion
+    setTimeout(() => {
+      setSuggestion({
+        intent: 'warm',
+        intent_score: 65,
+        recommended_action: 'book_call',
+        response: "That's exactly why I built this! The speed-to-lead problem kills more deals than anything. What if I showed you how it works with your actual leads? I have a 15-min slot tomorrow - would that work?",
+        cta_type: 'booking',
+        internal_notes: "Lead is showing buying signals. Pain point identified. Move to booking."
       });
-
-      if (error) throw error;
-
-      setSuggestion(data);
-      setMessageInput(data.response);
-    } catch (error) {
-      console.error('Closer error:', error);
-      toast.error('Failed to generate suggestion');
-    } finally {
+      setMessageInput("That's exactly why I built this! The speed-to-lead problem kills more deals than anything. What if I showed you how it works with your actual leads? I have a 15-min slot tomorrow - would that work?");
       setGenerating(false);
-    }
+    }, 1000);
   };
 
   const sendMessage = async () => {
     if (!messageInput.trim() || !selectedConversation) return;
 
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: generateMockId(),
       role: 'assistant',
       content: messageInput,
       timestamp: new Date(),
@@ -229,13 +218,12 @@ export function DMCloserInbox() {
     setSuggestion(null);
 
     // Update conversation
-    await supabase
-      .from('dm_conversations')
-      .update({
-        last_message_at: new Date().toISOString(),
-        messages_count: (selectedConversation.messages_count || 0) + 1
-      })
-      .eq('id', selectedConversation.id);
+    const updated = conversations.map(c => 
+      c.id === selectedConversation.id 
+        ? { ...c, last_message_at: new Date().toISOString(), messages_count: (c.messages_count || 0) + 1 }
+        : c
+    );
+    setConversations(updated);
 
     toast.success('Message sent! (Connect platform to auto-send)');
   };
@@ -256,46 +244,27 @@ export function DMCloserInbox() {
   };
 
   const createDemoConversation = async () => {
-    if (!organization?.id) return;
-
-    // First create a demo lead
-    const { data: lead, error: leadError } = await supabase
-      .from('leads')
-      .insert({
-        organization_id: organization.id,
+    const newConv: DMConversation = {
+      id: generateMockId(),
+      lead_id: generateMockId(),
+      platform: 'instagram',
+      status: 'active',
+      last_message_at: new Date().toISOString(),
+      messages_count: 0,
+      sentiment_score: 50,
+      ai_handling_mode: 'suggest',
+      lead: {
+        id: generateMockId(),
         name: 'Demo Prospect',
         email: 'demo@example.com',
-        source: 'Instagram DM',
-        intent_score: 50
-      })
-      .select()
-      .single();
+        intent_score: 50,
+        source: 'Instagram DM'
+      }
+    };
 
-    if (leadError) {
-      console.error('Lead error:', leadError);
-      return;
-    }
-
-    // Create conversation
-    const { data, error } = await supabase
-      .from('dm_conversations')
-      .insert({
-        organization_id: organization.id,
-        lead_id: lead.id,
-        platform: 'instagram',
-        status: 'active',
-        ai_handling_mode: 'suggest'
-      })
-      .select(`*, lead:leads(id, name, email, intent_score, source)`)
-      .single();
-
-    if (error) {
-      console.error('Conversation error:', error);
-      return;
-    }
-
-    setConversations(prev => [data, ...prev]);
-    setSelectedConversation(data);
+    const updated = [newConv, ...conversations];
+    setConversations(updated);
+    setSelectedConversation(newConv);
     toast.success('Demo conversation created!');
   };
 
@@ -499,23 +468,7 @@ export function DMCloserInbox() {
                     <p className="text-xs text-muted-foreground mb-2">
                       {suggestion.internal_notes}
                     </p>
-                    {suggestion.cta_type !== 'none' && (
-                      <div className="flex items-center gap-2 mb-2">
-                        {suggestion.cta_type === 'booking_link' && (
-                          <Badge className="bg-blue-500/20 text-blue-400">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            Include Booking Link
-                          </Badge>
-                        )}
-                        {suggestion.cta_type === 'payment_link' && (
-                          <Badge className="bg-green-500/20 text-green-400">
-                            <CreditCard className="w-3 h-3 mr-1" />
-                            Include Payment Link
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <Button size="sm" onClick={useSuggestion}>
                         Use Suggestion
                       </Button>
@@ -531,12 +484,12 @@ export function DMCloserInbox() {
 
             {/* Message Input */}
             <div className="p-4 border-t border-border">
-              <div className="flex gap-3">
+              <div className="flex items-end gap-2">
                 <Textarea
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   placeholder="Type your message..."
-                  className="min-h-[60px] resize-none"
+                  className="min-h-[80px] resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -550,7 +503,7 @@ export function DMCloserInbox() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => generateAISuggestion(messages)}
+                    onClick={regenerateSuggestion}
                     disabled={generating}
                   >
                     {generating ? (
@@ -567,7 +520,8 @@ export function DMCloserInbox() {
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Select a conversation to start closing</p>
+              <p className="font-medium">Select a conversation</p>
+              <p className="text-sm">Choose from the list or create a new one</p>
             </div>
           </div>
         )}

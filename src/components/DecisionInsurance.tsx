@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +22,7 @@ import {
   Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useOrganization } from '@/hooks/useOrganization';
+import { useMockStorage, generateMockId, generateMockTimestamp } from '@/hooks/useMockStorage';
 import { addDays, format } from 'date-fns';
 
 interface InsurancePolicy {
@@ -52,9 +50,27 @@ interface InsuranceClaim {
   created_at: string;
 }
 
+const DEMO_POLICIES: InsurancePolicy[] = [
+  {
+    id: '1',
+    policy_type: 'revenue_guarantee',
+    guarantee_description: 'New marketing campaign will increase leads by 25%',
+    guaranteed_metric: 'lead_increase',
+    guaranteed_threshold: 25,
+    guarantee_period_days: 60,
+    premium_fee: 199,
+    refund_percentage: 100,
+    status: 'active',
+    outcome_measured: null,
+    outcome_met: null,
+    created_at: new Date().toISOString(),
+    expires_at: addDays(new Date(), 60).toISOString()
+  }
+];
+
 export default function DecisionInsurance() {
-  const { organization } = useOrganization();
-  const queryClient = useQueryClient();
+  const { data: policies, setData: setPolicies } = useMockStorage<InsurancePolicy>('decision_insurance_policies', DEMO_POLICIES);
+  const { data: claims, setData: setClaims } = useMockStorage<InsuranceClaim>('insurance_claims', []);
   const [showNewPolicy, setShowNewPolicy] = useState(false);
   const [newPolicy, setNewPolicy] = useState({
     policy_type: 'revenue_guarantee',
@@ -65,73 +81,45 @@ export default function DecisionInsurance() {
     premium_fee: 199
   });
 
-  const { data: policies = [], isLoading } = useQuery({
-    queryKey: ['insurance-policies', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('decision_insurance_policies')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as InsurancePolicy[];
-    },
-    enabled: !!organization?.id
-  });
+  const createPolicy = () => {
+    const policy: InsurancePolicy = {
+      id: generateMockId(),
+      ...newPolicy,
+      refund_percentage: 100,
+      status: 'active',
+      outcome_measured: null,
+      outcome_met: null,
+      created_at: generateMockTimestamp(),
+      expires_at: addDays(new Date(), newPolicy.guarantee_period_days).toISOString()
+    };
+    setPolicies([policy, ...policies]);
+    setShowNewPolicy(false);
+    setNewPolicy({
+      policy_type: 'revenue_guarantee',
+      guarantee_description: '',
+      guaranteed_metric: 'revenue_increase',
+      guaranteed_threshold: 15,
+      guarantee_period_days: 60,
+      premium_fee: 199
+    });
+    toast.success('Decision insured! Premium fee applied.');
+  };
 
-  const { data: claims = [] } = useQuery({
-    queryKey: ['insurance-claims', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('insurance_claims')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as InsuranceClaim[];
-    },
-    enabled: !!organization?.id
-  });
+  const fileClaim = (policyId: string) => {
+    const policy = policies.find(p => p.id === policyId);
+    if (!policy) return;
 
-  const createPolicyMutation = useMutation({
-    mutationFn: async (policy: typeof newPolicy) => {
-      if (!organization?.id) throw new Error('No organization');
-      const { error } = await supabase.from('decision_insurance_policies').insert({
-        organization_id: organization.id,
-        ...policy,
-        refund_percentage: 100,
-        expires_at: addDays(new Date(), policy.guarantee_period_days).toISOString()
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['insurance-policies'] });
-      setShowNewPolicy(false);
-      toast.success('Decision insured! Premium fee applied.');
-    }
-  });
-
-  const fileClaimMutation = useMutation({
-    mutationFn: async (policyId: string) => {
-      if (!organization?.id) throw new Error('No organization');
-      const policy = policies.find(p => p.id === policyId);
-      if (!policy) throw new Error('Policy not found');
-      
-      const { error } = await supabase.from('insurance_claims').insert({
-        organization_id: organization.id,
-        policy_id: policyId,
-        claim_reason: 'Guaranteed threshold not met',
-        claim_amount: policy.premium_fee
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['insurance-claims'] });
-      toast.success('Claim filed successfully');
-    }
-  });
+    const claim: InsuranceClaim = {
+      id: generateMockId(),
+      policy_id: policyId,
+      claim_reason: 'Guaranteed threshold not met',
+      claim_amount: policy.premium_fee,
+      status: 'pending',
+      created_at: generateMockTimestamp()
+    };
+    setClaims([claim, ...claims]);
+    toast.success('Claim filed successfully');
+  };
 
   const activePolicies = policies.filter(p => p.status === 'active');
   const succeededPolicies = policies.filter(p => p.status === 'succeeded');
@@ -211,7 +199,7 @@ export default function DecisionInsurance() {
               </div>
               <Button 
                 className="w-full" 
-                onClick={() => createPolicyMutation.mutate(newPolicy)}
+                onClick={createPolicy}
                 disabled={!newPolicy.guarantee_description}
               >
                 <Shield className="h-4 w-4 mr-2" />
@@ -336,7 +324,7 @@ export default function DecisionInsurance() {
                         size="sm" 
                         variant="outline" 
                         className="mt-2"
-                        onClick={() => fileClaimMutation.mutate(policy.id)}
+                        onClick={() => fileClaim(policy.id)}
                       >
                         File Claim
                       </Button>
