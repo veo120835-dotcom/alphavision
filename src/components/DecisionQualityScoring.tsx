@@ -9,9 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useOrganization } from "@/hooks/useOrganization";
+import { useMockStorage } from "@/hooks/useMockStorage";
 
 interface ScoredDecision {
   id: string;
@@ -27,9 +25,37 @@ interface ScoredDecision {
   outcome_recorded_at: string | null;
 }
 
+const DEMO_DECISIONS: ScoredDecision[] = [
+  {
+    id: '1',
+    decision_description: 'Launched new pricing tier for enterprise clients',
+    rationale: 'Market analysis showed demand for premium features',
+    decision_quality_score: 85,
+    outcome_quality_score: 78,
+    regret_delta: -5,
+    confidence_at_decision: 75,
+    calibration_accuracy: 82,
+    learning_extracted: 'Enterprise clients respond better to value-based pricing than feature-based',
+    decided_at: new Date(Date.now() - 30 * 24 * 3600000).toISOString(),
+    outcome_recorded_at: new Date(Date.now() - 5 * 24 * 3600000).toISOString()
+  },
+  {
+    id: '2',
+    decision_description: 'Hired additional sales rep for Q4',
+    rationale: 'Pipeline growth required more capacity',
+    decision_quality_score: 72,
+    outcome_quality_score: null,
+    regret_delta: null,
+    confidence_at_decision: 68,
+    calibration_accuracy: null,
+    learning_extracted: null,
+    decided_at: new Date(Date.now() - 10 * 24 * 3600000).toISOString(),
+    outcome_recorded_at: null
+  }
+];
+
 export default function DecisionQualityScoring() {
-  const [decisions, setDecisions] = useState<ScoredDecision[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: decisions, loading } = useMockStorage<ScoredDecision>('decision_quality_scores', DEMO_DECISIONS);
   const [stats, setStats] = useState({
     avgDecisionQuality: 0,
     avgOutcomeQuality: 0,
@@ -37,54 +63,17 @@ export default function DecisionQualityScoring() {
     decisionsTracked: 0,
     learningsExtracted: 0
   });
-  const { organization } = useOrganization();
 
   useEffect(() => {
-    if (organization?.id) fetchDecisions();
-  }, [organization?.id]);
-
-  const fetchDecisions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('decision_action_outcomes')
-        .select('*')
-        .eq('organization_id', organization!.id)
-        .order('recorded_at', { ascending: false })
-        .limit(20);
-      
-      if (error) throw error;
-      
-      const scored = (data || []).map(d => ({
-        id: d.id,
-        decision_description: d.decision_chosen,
-        rationale: JSON.stringify(d.decision_context),
-        decision_quality_score: 70 + Math.random() * 25,
-        outcome_quality_score: d.actual_outcome ? 60 + Math.random() * 35 : null,
-        regret_delta: d.regret_score || null,
-        confidence_at_decision: 65 + Math.random() * 30,
-        calibration_accuracy: d.actual_outcome ? 70 + Math.random() * 25 : null,
-        learning_extracted: d.learning_extracted,
-        decided_at: d.recorded_at,
-        outcome_recorded_at: d.outcome_recorded_at
-      }));
-      
-      setDecisions(scored);
-      
-      // Calculate stats
-      const withOutcomes = scored.filter(d => d.outcome_quality_score);
-      setStats({
-        avgDecisionQuality: scored.length ? scored.reduce((a, b) => a + b.decision_quality_score, 0) / scored.length : 0,
-        avgOutcomeQuality: withOutcomes.length ? withOutcomes.reduce((a, b) => a + (b.outcome_quality_score || 0), 0) / withOutcomes.length : 0,
-        calibrationScore: withOutcomes.length ? withOutcomes.reduce((a, b) => a + (b.calibration_accuracy || 0), 0) / withOutcomes.length : 0,
-        decisionsTracked: scored.length,
-        learningsExtracted: scored.filter(d => d.learning_extracted).length
-      });
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const withOutcomes = decisions.filter(d => d.outcome_quality_score);
+    setStats({
+      avgDecisionQuality: decisions.length ? decisions.reduce((a, b) => a + b.decision_quality_score, 0) / decisions.length : 0,
+      avgOutcomeQuality: withOutcomes.length ? withOutcomes.reduce((a, b) => a + (b.outcome_quality_score || 0), 0) / withOutcomes.length : 0,
+      calibrationScore: withOutcomes.length ? withOutcomes.reduce((a, b) => a + (b.calibration_accuracy || 0), 0) / withOutcomes.length : 0,
+      decisionsTracked: decisions.length,
+      learningsExtracted: decisions.filter(d => d.learning_extracted).length
+    });
+  }, [decisions]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';

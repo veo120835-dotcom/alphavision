@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +24,7 @@ import {
   ArrowRight,
   Edit
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useOrganization } from "@/hooks/useOrganization";
+import { useMockStorage } from "@/hooks/useMockStorage";
 import { toast } from "sonner";
 
 interface DMStep {
@@ -86,76 +85,22 @@ const DEFAULT_SEQUENCES: DMSequence[] = [
 ];
 
 export function DMSequenceAutomation() {
-  const { organization } = useOrganization();
-  const [sequences, setSequences] = useState<DMSequence[]>(DEFAULT_SEQUENCES);
+  const { data: sequences, setData: setSequences } = useMockStorage<DMSequence>('dm_sequences', DEFAULT_SEQUENCES);
   const [selectedSequence, setSelectedSequence] = useState<DMSequence | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  useEffect(() => {
-    if (organization?.id) {
-      loadSequences();
-    }
-  }, [organization?.id]);
-
-  const loadSequences = async () => {
-    if (!organization?.id) return;
-
-    const { data } = await supabase
-      .from('memory_items')
-      .select('*')
-      .eq('organization_id', organization.id)
-      .eq('type', 'dm_sequences')
-      .single();
-
-    if (data?.content) {
-      const content = data.content as { sequences?: DMSequence[] };
-      if (content.sequences) setSequences(content.sequences);
-    }
-  };
-
   const saveSequences = async () => {
-    if (!organization?.id) return;
-
-    try {
-      const { data: existing } = await supabase
-        .from('memory_items')
-        .select('id')
-        .eq('organization_id', organization.id)
-        .eq('type', 'dm_sequences')
-        .single();
-
-      const content = JSON.parse(JSON.stringify({ sequences }));
-
-      if (existing) {
-        await supabase
-          .from('memory_items')
-          .update({ content, updated_at: new Date().toISOString() })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('memory_items')
-          .insert({
-            organization_id: organization.id,
-            type: 'dm_sequences',
-            title: 'DM Sequence Configuration',
-            content
-          });
-      }
-
-      toast.success('Sequences saved!');
-    } catch (error) {
-      toast.error('Failed to save');
-    }
+    toast.success('Sequences saved!');
   };
 
   const toggleSequence = (id: string) => {
-    setSequences(prev => prev.map(s => 
+    setSequences(sequences.map(s => 
       s.id === id ? { ...s, isActive: !s.isActive } : s
     ));
   };
 
   const addStep = (sequenceId: string) => {
-    setSequences(prev => prev.map(s => {
+    setSequences(sequences.map(s => {
       if (s.id === sequenceId) {
         return {
           ...s,
@@ -172,7 +117,7 @@ export function DMSequenceAutomation() {
   };
 
   const updateStep = (sequenceId: string, stepId: string, updates: Partial<DMStep>) => {
-    setSequences(prev => prev.map(s => {
+    setSequences(sequences.map(s => {
       if (s.id === sequenceId) {
         return {
           ...s,
@@ -186,7 +131,7 @@ export function DMSequenceAutomation() {
   };
 
   const deleteStep = (sequenceId: string, stepId: string) => {
-    setSequences(prev => prev.map(s => {
+    setSequences(sequences.map(s => {
       if (s.id === sequenceId) {
         return {
           ...s,
