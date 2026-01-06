@@ -1,0 +1,121 @@
+project_id = "unoxusaqjdhcypsqnlsj"
+
+[functions.webhook-handler]
+verify_jwt = false
+
+[functions.model-router]
+verify_jwt = false
+
+[functions.context-summarizer]
+verify_jwt = false
+
+[functions.eval-runner]
+verify_jwt = false
+
+[functions.trace-logger]
+verify_jwt = false
+
+[functions.self-healer]
+verify_jwt = false
+
+[functions.deal-simulator]
+verify_jwt = false
+
+[functions.sniper-outreach]
+verify_jwt = false
+
+[functions.chart-generator]
+verify_jwt = false
+
+[functions.automated-eval]
+verify_jwt = false
+
+[functions.crash-recovery]
+verify_jwt = false
+
+[functions.unified-api]
+verify_jwt = false
+
+[functions.webhooks]
+verify_jwt = false
+
+[functions.crm-oauth]
+verify_jwt = false
+
+[functions.crm-oauth-callback]
+verify_jwt = false
+
+[functions.crm-actions]
+verify_jwt = false
+
+[functions.autonomous-agent-runner]
+verify_jwt = false
+
+[functions.pricing-enforcer]
+verify_jwt = false
+
+[functions.client-filter-agent]
+verify_jwt = false
+
+[functions.meeting-enforcer]
+verify_jwt = false
+
+[functions.waste-detector]
+verify_jwt = false
+
+[functions.failure-prevention-agent]
+verify_jwt = false
+
+[functions.competitive-intel-agent]
+verify_jwt = false
+
+[functions.emotional-regulator]
+verify_jwt = false
+
+[functions.daily-brief-generator]
+verify_jwt = false
+
+[functions.voice-dialer]
+verify_jwt = false
+
+[functions.stripe-subscription-webhooks]
+verify_jwt = false
+
+[functions.tier-enforcer]
+verify_jwt = false
+
+[functions.meta-evolution]
+verify_jwt = false
+
+[functions.campaign-executor]
+verify_jwt = false
+
+[functions.form-submit]
+verify_jwt = false
+
+[functions.booking-slots]
+verify_jwt = false
+
+[functions.booking-create]
+verify_jwt = false
+
+[functions.workflow-engine]
+verify_jwt = false
+
+[functions.knowledge-ingest]
+verify_jwt = false
+
+[functions.knowledge-search]
+verify_jwt = false
+
+[functions.niche-detector]
+verify_jwt = false
+
+[functions.website-diagnosis]
+verify_jwt = false
+
+[functions.authority-email-generator]
+verify_jwt = false
+
+[functions.cold-email-sender]
+verify_jwt = false
