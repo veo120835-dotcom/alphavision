@@ -1,25 +1,23 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { motion } from "framer-motion";
 import { 
   DollarSign, TrendingUp, TrendingDown, Shield, Zap,
-  Play, Pause, Square, AlertTriangle, CheckCircle2, Clock,
-  Target, BarChart3, Rocket, RefreshCw, Eye, Settings
+  AlertTriangle, CheckCircle2, Clock,
+  Target, Rocket
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMockStorage, generateMockId } from "@/hooks/useMockStorage";
 
 interface CapitalContract {
   id: string;
@@ -58,14 +56,10 @@ interface Deployment {
   realized_pnl: number;
   status: string;
   current_step: number;
-  execution_steps: any;
 }
 
 export default function CapitalDeploymentDashboard() {
-  const [contracts, setContracts] = useState<CapitalContract[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [deployments, setDeployments] = useState<Deployment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { organization } = useOrganization();
   const [showNewContract, setShowNewContract] = useState(false);
   const [newContract, setNewContract] = useState({
     type: 'lead_arbitrage',
@@ -74,87 +68,41 @@ export default function CapitalDeploymentDashboard() {
     timeHorizon: 14,
     categories: ['leads', 'services']
   });
-  const { organization } = useOrganization();
 
-  useEffect(() => {
-    if (organization?.id) fetchData();
-  }, [organization?.id]);
+  // Use mock storage for non-existent tables
+  const { data: contracts, addItem: addContract, updateItem: updateContract } = useMockStorage<CapitalContract>(`capital_contracts_${organization?.id}`);
+  const { data: opportunities, updateItem: updateOpportunity } = useMockStorage<Opportunity>(`arbitrage_opportunities_${organization?.id}`);
+  const { data: deployments } = useMockStorage<Deployment>(`capital_deployments_${organization?.id}`);
 
-  const fetchData = async () => {
-    try {
-      const [contractsRes, oppsRes, deploymentsRes] = await Promise.all([
-        supabase.from('capital_contracts').select('*').eq('organization_id', organization!.id).order('created_at', { ascending: false }),
-        supabase.from('arbitrage_opportunities_queue').select('*').eq('organization_id', organization!.id).order('detected_at', { ascending: false }).limit(10),
-        supabase.from('capital_deployments').select('*').eq('organization_id', organization!.id).order('created_at', { ascending: false }).limit(10)
-      ]);
-
-      setContracts(contractsRes.data || []);
-      setOpportunities(oppsRes.data || []);
-      setDeployments(deploymentsRes.data || []);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createContract = async () => {
+  const createContract = () => {
     if (!organization?.id) return;
 
-    try {
-      const { error } = await supabase
-        .from('capital_contracts')
-        .insert({
-          organization_id: organization.id,
-          contract_type: newContract.type,
-          max_capital: newContract.maxCapital,
-          max_loss: newContract.maxLoss,
-          time_horizon_days: newContract.timeHorizon,
-          allowed_categories: newContract.categories,
-          status: 'pending_approval'
-        });
+    const contract: CapitalContract = {
+      id: generateMockId(),
+      contract_type: newContract.type,
+      max_capital: newContract.maxCapital,
+      max_loss: newContract.maxLoss,
+      time_horizon_days: newContract.timeHorizon,
+      allowed_categories: newContract.categories,
+      status: 'pending_approval',
+      current_deployed: 0,
+      current_pnl: 0,
+      created_at: new Date().toISOString()
+    };
 
-      if (error) throw error;
-      toast.success('Contract created! Review and approve to activate.');
-      setShowNewContract(false);
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to create contract');
-    }
+    addContract(contract);
+    toast.success('Contract created! Review and approve to activate.');
+    setShowNewContract(false);
   };
 
-  const approveContract = async (contractId: string) => {
-    try {
-      const { error } = await supabase
-        .from('capital_contracts')
-        .update({ 
-          status: 'active', 
-          approved_at: new Date().toISOString(),
-          approved_by: 'user'
-        })
-        .eq('id', contractId);
-
-      if (error) throw error;
-      toast.success('Contract approved! AI will now scan for opportunities.');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to approve contract');
-    }
+  const approveContract = (contractId: string) => {
+    updateContract(contractId, { status: 'active' });
+    toast.success('Contract approved! AI will now scan for opportunities.');
   };
 
-  const approveOpportunity = async (oppId: string) => {
-    try {
-      const { error } = await supabase
-        .from('arbitrage_opportunities_queue')
-        .update({ status: 'approved' })
-        .eq('id', oppId);
-
-      if (error) throw error;
-      toast.success('Opportunity approved for execution!');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to approve opportunity');
-    }
+  const approveOpportunity = (oppId: string) => {
+    updateOpportunity(oppId, { status: 'approved' });
+    toast.success('Opportunity approved for execution!');
   };
 
   const stats = {
@@ -164,14 +112,6 @@ export default function CapitalDeploymentDashboard() {
     pendingOpportunities: opportunities.filter(o => o.status === 'ready').length,
     activeDeployments: deployments.filter(d => d.status === 'active').length
   };
-
-  if (loading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -431,95 +371,55 @@ export default function CapitalDeploymentDashboard() {
         <TabsContent value="opportunities" className="space-y-4">
           {opportunities.length === 0 ? (
             <Card className="p-8 text-center">
-              <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <Rocket className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="font-medium mb-2">No Opportunities Detected</h3>
-              <p className="text-sm text-muted-foreground">
-                The AI is scanning for arbitrage opportunities. Check back soon.
+              <p className="text-sm text-muted-foreground mb-4">
+                Create an active contract to enable opportunity detection.
               </p>
             </Card>
           ) : (
             opportunities.map((opp) => (
-              <Card key={opp.id} className={cn(
-                "border-l-4",
-                opp.status === 'ready' ? "border-l-green-500" :
-                opp.status === 'executing' ? "border-l-blue-500" : "border-l-muted"
-              )}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium">{opp.title}</h3>
-                        <Badge variant="outline" className="capitalize">
-                          {opp.opportunity_type.replace('_', ' ')}
-                        </Badge>
-                        <Badge className={cn(
-                          opp.status === 'ready' ? "bg-green-500/20 text-green-400" :
-                          opp.status === 'executing' ? "bg-blue-500/20 text-blue-400" :
-                          "bg-muted text-muted-foreground"
-                        )}>
-                          {opp.status}
-                        </Badge>
+              <motion.div
+                key={opp.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-medium">{opp.title}</h3>
+                          <Badge variant="outline">{opp.opportunity_type}</Badge>
+                          <Badge className={cn(
+                            opp.confidence_score >= 80 ? "bg-green-500/20 text-green-400" :
+                            opp.confidence_score >= 60 ? "bg-yellow-500/20 text-yellow-400" :
+                            "bg-red-500/20 text-red-400"
+                          )}>
+                            {opp.confidence_score}% confidence
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{opp.description}</p>
+                        <div className="flex items-center gap-4 mt-3 text-sm">
+                          <span>Cost: ${opp.estimated_cost.toLocaleString()}</span>
+                          <span>Revenue: ${opp.estimated_revenue.toLocaleString()}</span>
+                          <span className="text-green-400">ROI: {opp.estimated_roi_percent}%</span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {opp.time_to_execute_hours}h
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">{opp.description}</p>
+                      {opp.status === 'ready' && (
+                        <Button onClick={() => approveOpportunity(opp.id)}>
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Approve
+                        </Button>
+                      )}
                     </div>
-                    {opp.status === 'ready' && (
-                      <Button onClick={() => approveOpportunity(opp.id)}>
-                        <Rocket className="w-4 h-4 mr-2" />
-                        Approve & Execute
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="grid md:grid-cols-6 gap-3 mb-4">
-                    <div className="p-2 rounded bg-muted/50 text-center">
-                      <div className="text-xs text-muted-foreground">Cost</div>
-                      <div className="font-bold">${opp.estimated_cost?.toLocaleString() || 0}</div>
-                    </div>
-                    <div className="p-2 rounded bg-muted/50 text-center">
-                      <div className="text-xs text-muted-foreground">Revenue</div>
-                      <div className="font-bold text-green-400">${opp.estimated_revenue?.toLocaleString() || 0}</div>
-                    </div>
-                    <div className="p-2 rounded bg-muted/50 text-center">
-                      <div className="text-xs text-muted-foreground">ROI</div>
-                      <div className="font-bold text-blue-400">{opp.estimated_roi_percent?.toFixed(0) || 0}%</div>
-                    </div>
-                    <div className="p-2 rounded bg-muted/50 text-center">
-                      <div className="text-xs text-muted-foreground">Confidence</div>
-                      <div className="font-bold">{opp.confidence_score?.toFixed(0) || 0}%</div>
-                    </div>
-                    <div className="p-2 rounded bg-muted/50 text-center">
-                      <div className="text-xs text-muted-foreground">Time</div>
-                      <div className="font-bold">{opp.time_to_execute_hours || 0}h</div>
-                    </div>
-                    <div className="p-2 rounded bg-muted/50 text-center">
-                      <div className="text-xs text-muted-foreground">Worst Case</div>
-                      <div className="font-bold text-red-400">${opp.worst_case?.toLocaleString() || 0}</div>
-                    </div>
-                  </div>
-
-                  {/* Simulation Results */}
-                  <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4" />
-                      Outcome Simulation
-                    </h4>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <div className="text-xs text-muted-foreground mb-1">Worst Case</div>
-                        <div className="text-lg font-bold text-red-400">${opp.worst_case?.toLocaleString() || 0}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-muted-foreground mb-1">Base Case</div>
-                        <div className="text-lg font-bold text-yellow-400">${opp.base_case?.toLocaleString() || 0}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-muted-foreground mb-1">Best Case</div>
-                        <div className="text-lg font-bold text-green-400">${opp.best_case?.toLocaleString() || 0}</div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))
           )}
         </TabsContent>
@@ -530,69 +430,35 @@ export default function CapitalDeploymentDashboard() {
               <Zap className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="font-medium mb-2">No Active Deployments</h3>
               <p className="text-sm text-muted-foreground">
-                Approve opportunities to start automated capital deployment.
+                Approve opportunities to start deployments.
               </p>
             </Card>
           ) : (
             deployments.map((dep) => (
-              <Card key={dep.id} className={cn(
-                "border-l-4",
-                dep.status === 'active' ? "border-l-blue-500" :
-                dep.status === 'completed' ? "border-l-green-500" :
-                dep.status === 'halted' ? "border-l-red-500" : "border-l-muted"
-              )}>
+              <Card key={dep.id}>
                 <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium capitalize">{dep.deployment_type.replace('_', ' ')}</h3>
-                        <Badge className={cn(
-                          dep.status === 'active' ? "bg-blue-500/20 text-blue-400" :
-                          dep.status === 'completed' ? "bg-green-500/20 text-green-400" :
-                          dep.status === 'halted' ? "bg-red-500/20 text-red-400" :
-                          "bg-muted text-muted-foreground"
-                        )}>
-                          {dep.status}
-                        </Badge>
-                      </div>
+                      <h3 className="font-medium capitalize">{dep.deployment_type.replace('_', ' ')}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Deployed: ${dep.capital_deployed.toLocaleString()} • 
+                        Current Value: ${dep.current_value.toLocaleString()}
+                      </p>
                     </div>
-                    <div className="flex gap-2">
-                      {dep.status === 'active' && (
-                        <>
-                          <Button variant="outline" size="sm">
-                            <Pause className="w-4 h-4 mr-1" />
-                            Pause
-                          </Button>
-                          <Button variant="destructive" size="sm">
-                            <Square className="w-4 h-4 mr-1" />
-                            Halt
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-4 gap-4">
-                    <div className="p-3 rounded-lg bg-muted/50">
-                      <div className="text-xs text-muted-foreground mb-1">Deployed</div>
-                      <div className="text-lg font-bold">${dep.capital_deployed.toLocaleString()}</div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/50">
-                      <div className="text-xs text-muted-foreground mb-1">Current Value</div>
-                      <div className="text-lg font-bold text-blue-400">${dep.current_value.toLocaleString()}</div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/50">
-                      <div className="text-xs text-muted-foreground mb-1">Realized P&L</div>
+                    <div className="flex items-center gap-4">
                       <div className={cn(
                         "text-lg font-bold",
                         dep.realized_pnl >= 0 ? "text-green-400" : "text-red-400"
                       )}>
                         {dep.realized_pnl >= 0 ? '+' : ''}${dep.realized_pnl.toLocaleString()}
                       </div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/50">
-                      <div className="text-xs text-muted-foreground mb-1">Execution Step</div>
-                      <div className="text-lg font-bold">{dep.current_step}/{(dep.execution_steps as any[])?.length || 0}</div>
+                      <Badge className={cn(
+                        dep.status === 'active' ? "bg-green-500/20 text-green-400" :
+                        dep.status === 'completed' ? "bg-blue-500/20 text-blue-400" :
+                        "bg-muted text-muted-foreground"
+                      )}>
+                        {dep.status}
+                      </Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -602,76 +468,17 @@ export default function CapitalDeploymentDashboard() {
         </TabsContent>
 
         <TabsContent value="killswitch" className="space-y-4">
-          <Card className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-full bg-red-500/20">
-                  <AlertTriangle className="w-6 h-6 text-red-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-2">Kill Switch System</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Automatic protection that halts all deployments if critical thresholds are breached.
-                  </p>
-                  
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="p-3 rounded-lg bg-background/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm">ROI Drop Threshold</span>
-                        <span className="font-bold text-red-400">-30%</span>
-                      </div>
-                      <Progress value={70} className="h-2 [&>div]:bg-green-500" />
-                    </div>
-                    <div className="p-3 rounded-lg bg-background/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm">Spend Cap</span>
-                        <span className="font-bold">100%</span>
-                      </div>
-                      <Progress value={45} className="h-2" />
-                    </div>
-                    <div className="p-3 rounded-lg bg-background/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm">Quality Score</span>
-                        <span className="font-bold text-green-400">85%</span>
-                      </div>
-                      <Progress value={85} className="h-2 [&>div]:bg-green-500" />
-                    </div>
-                  </div>
-                </div>
-                <Button variant="destructive" size="lg">
-                  <Square className="w-5 h-5 mr-2" />
-                  EMERGENCY HALT ALL
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Kill Switch Rules</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[
-                  { trigger: 'ROI drops below -30%', action: 'Halt deployment', status: 'armed' },
-                  { trigger: 'Spend cap reached', action: 'Pause new executions', status: 'armed' },
-                  { trigger: 'Quality score below 50%', action: 'Halt and review', status: 'armed' },
-                  { trigger: 'Loss limit reached', action: 'Terminate contract', status: 'armed' },
-                  { trigger: 'Time horizon exceeded', action: 'Auto-harvest', status: 'armed' },
-                  { trigger: 'External risk spike', action: 'Alert + pause', status: 'armed' }
-                ].map((rule, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div>
-                      <div className="font-medium text-sm">{rule.trigger}</div>
-                      <div className="text-xs text-muted-foreground">{rule.action}</div>
-                    </div>
-                    <Badge className="bg-green-500/20 text-green-400">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      {rule.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+          <Card className="border-red-500/30 bg-red-500/5">
+            <CardContent className="p-6 text-center">
+              <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-400" />
+              <h3 className="font-semibold text-lg mb-2">Emergency Kill Switch</h3>
+              <p className="text-muted-foreground mb-4">
+                Immediately halt all capital deployments and lock all contracts
+              </p>
+              <Button variant="destructive" size="lg">
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                Activate Kill Switch
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

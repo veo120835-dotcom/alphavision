@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { 
-  Wallet, DollarSign, TrendingDown, TrendingUp, Zap,
-  CheckCircle2, Clock, AlertTriangle, RefreshCw, Target,
-  CreditCard, FileText, Trash2, ArrowUpRight
+  Wallet, DollarSign, Zap,
+  CheckCircle2, Clock, Target,
+  CreditCard, FileText, Trash2, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,8 +12,8 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useMockStorage, generateMockId } from "@/hooks/useMockStorage";
 
 interface CashflowOptimization {
   id: string;
@@ -30,79 +30,73 @@ interface CashflowOptimization {
 }
 
 export default function CashflowOptimizationEngine() {
-  const [optimizations, setOptimizations] = useState<CashflowOptimization[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [autoMode, setAutoMode] = useState(false);
-  const [stats, setStats] = useState({
-    totalMonthlySavings: 0,
-    totalOneTimeSavings: 0,
-    pendingOptimizations: 0,
-    completedOptimizations: 0
-  });
   const { organization } = useOrganization();
+  const [autoMode, setAutoMode] = useState(false);
 
-  useEffect(() => {
-    if (organization?.id) fetchData();
-  }, [organization?.id]);
-
-  const fetchData = async () => {
-    try {
-      const { data } = await supabase
-        .from('cashflow_optimizations')
-        .select('*')
-        .eq('organization_id', organization!.id)
-        .order('estimated_monthly_savings', { ascending: false });
-
-      const opts = data || [];
-      setOptimizations(opts);
-      
-      setStats({
-        totalMonthlySavings: opts.filter(o => o.status === 'completed').reduce((a, b) => a + (b.estimated_monthly_savings || 0), 0),
-        totalOneTimeSavings: opts.filter(o => o.status === 'completed').reduce((a, b) => a + (b.estimated_one_time_savings || 0), 0),
-        pendingOptimizations: opts.filter(o => o.status === 'detected' || o.status === 'pending_approval').length,
-        completedOptimizations: opts.filter(o => o.status === 'completed').length
-      });
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
+  // Use mock storage for non-existent tables with sample data
+  const { data: optimizations, updateItem } = useMockStorage<CashflowOptimization>(`cashflow_optimizations_${organization?.id}`, [
+    {
+      id: generateMockId(),
+      optimization_type: 'waste_detection',
+      title: 'Unused Zoom Licenses',
+      description: '3 Zoom licenses not used in 60+ days. Cancel to save immediately.',
+      estimated_monthly_savings: 45,
+      estimated_one_time_savings: 0,
+      confidence_score: 95,
+      status: 'detected',
+      auto_executable: true,
+      risk_level: 'low',
+      detected_at: new Date().toISOString()
+    },
+    {
+      id: generateMockId(),
+      optimization_type: 'invoice_speedup',
+      title: 'Accelerate Invoice #4521',
+      description: 'Client typically pays within 5 days. Send reminder now to capture $8,500 earlier.',
+      estimated_monthly_savings: 0,
+      estimated_one_time_savings: 8500,
+      confidence_score: 85,
+      status: 'detected',
+      auto_executable: true,
+      risk_level: 'low',
+      detected_at: new Date().toISOString()
+    },
+    {
+      id: generateMockId(),
+      optimization_type: 'subscription_consolidation',
+      title: 'Consolidate Marketing Tools',
+      description: 'Replace 3 separate tools with HubSpot starter. Same functionality, 40% less cost.',
+      estimated_monthly_savings: 320,
+      estimated_one_time_savings: 0,
+      confidence_score: 78,
+      status: 'detected',
+      auto_executable: false,
+      risk_level: 'medium',
+      detected_at: new Date().toISOString()
+    },
+    {
+      id: generateMockId(),
+      optimization_type: 'payment_timing',
+      title: 'Delay AWS Payment',
+      description: 'Move AWS billing from 1st to 15th. Improves cash position by $2,400 for 2 weeks/month.',
+      estimated_monthly_savings: 0,
+      estimated_one_time_savings: 2400,
+      confidence_score: 90,
+      status: 'detected',
+      auto_executable: true,
+      risk_level: 'low',
+      detected_at: new Date().toISOString()
     }
+  ]);
+
+  const approveOptimization = (optId: string) => {
+    updateItem(optId, { status: 'approved' });
+    toast.success('Optimization approved for execution');
   };
 
-  const approveOptimization = async (optId: string) => {
-    try {
-      const { error } = await supabase
-        .from('cashflow_optimizations')
-        .update({ 
-          status: 'approved',
-          approved_at: new Date().toISOString()
-        })
-        .eq('id', optId);
-
-      if (error) throw error;
-      toast.success('Optimization approved for execution');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to approve');
-    }
-  };
-
-  const executeOptimization = async (optId: string) => {
-    try {
-      const { error } = await supabase
-        .from('cashflow_optimizations')
-        .update({ 
-          status: 'completed',
-          executed_at: new Date().toISOString()
-        })
-        .eq('id', optId);
-
-      if (error) throw error;
-      toast.success('Optimization executed successfully');
-      fetchData();
-    } catch (error) {
-      toast.error('Execution failed');
-    }
+  const executeOptimization = (optId: string) => {
+    updateItem(optId, { status: 'completed' });
+    toast.success('Optimization executed successfully');
   };
 
   const getTypeIcon = (type: string) => {
@@ -117,71 +111,12 @@ export default function CashflowOptimizationEngine() {
     }
   };
 
-  // Sample data if none exists
-  const sampleOptimizations: CashflowOptimization[] = [
-    {
-      id: '1',
-      optimization_type: 'waste_detection',
-      title: 'Unused Zoom Licenses',
-      description: '3 Zoom licenses not used in 60+ days. Cancel to save immediately.',
-      estimated_monthly_savings: 45,
-      estimated_one_time_savings: 0,
-      confidence_score: 95,
-      status: 'detected',
-      auto_executable: true,
-      risk_level: 'low',
-      detected_at: new Date().toISOString()
-    },
-    {
-      id: '2',
-      optimization_type: 'invoice_speedup',
-      title: 'Accelerate Invoice #4521',
-      description: 'Client typically pays within 5 days. Send reminder now to capture $8,500 earlier.',
-      estimated_monthly_savings: 0,
-      estimated_one_time_savings: 8500,
-      confidence_score: 85,
-      status: 'detected',
-      auto_executable: true,
-      risk_level: 'low',
-      detected_at: new Date().toISOString()
-    },
-    {
-      id: '3',
-      optimization_type: 'subscription_consolidation',
-      title: 'Consolidate Marketing Tools',
-      description: 'Replace 3 separate tools with HubSpot starter. Same functionality, 40% less cost.',
-      estimated_monthly_savings: 320,
-      estimated_one_time_savings: 0,
-      confidence_score: 78,
-      status: 'detected',
-      auto_executable: false,
-      risk_level: 'medium',
-      detected_at: new Date().toISOString()
-    },
-    {
-      id: '4',
-      optimization_type: 'payment_timing',
-      title: 'Delay AWS Payment',
-      description: 'Move AWS billing from 1st to 15th. Improves cash position by $2,400 for 2 weeks/month.',
-      estimated_monthly_savings: 0,
-      estimated_one_time_savings: 2400,
-      confidence_score: 90,
-      status: 'detected',
-      auto_executable: true,
-      risk_level: 'low',
-      detected_at: new Date().toISOString()
-    }
-  ];
-
-  const displayOptimizations = optimizations.length > 0 ? optimizations : sampleOptimizations;
-
-  if (loading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
+  const stats = {
+    totalMonthlySavings: optimizations.filter(o => o.status === 'completed').reduce((a, b) => a + (b.estimated_monthly_savings || 0), 0),
+    totalOneTimeSavings: optimizations.filter(o => o.status === 'completed').reduce((a, b) => a + (b.estimated_one_time_savings || 0), 0),
+    pendingOptimizations: optimizations.filter(o => o.status === 'detected' || o.status === 'approved').length,
+    completedOptimizations: optimizations.filter(o => o.status === 'completed').length
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -273,7 +208,7 @@ export default function CashflowOptimizationEngine() {
       <div className="space-y-4">
         <h2 className="font-semibold text-lg">Detected Optimizations</h2>
         
-        {displayOptimizations.map((opt, index) => (
+        {optimizations.map((opt, index) => (
           <motion.div
             key={opt.id}
             initial={{ opacity: 0, y: 20 }}

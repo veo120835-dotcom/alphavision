@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,18 +16,16 @@ import {
   Zap,
   Target,
   TrendingUp,
-  TrendingDown,
   Plus,
   CheckCircle,
   XCircle,
   AlertTriangle,
   BarChart3,
-  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOrganization } from '@/hooks/useOrganization';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Json } from '@/integrations/supabase/types';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { useMockStorage, generateMockId } from '@/hooks/useMockStorage';
 
 interface AllocationRule {
   id: string;
@@ -46,12 +42,12 @@ interface AllocationRule {
 interface AllocationSnapshot {
   id: string;
   snapshot_date: string;
-  time_allocation: Json;
-  money_allocation: Json;
-  attention_allocation: Json;
-  roi_by_category: Json;
+  time_allocation: Record<string, number>;
+  money_allocation: Record<string, number>;
+  attention_allocation: Record<string, number>;
+  roi_by_category: Record<string, number>;
   efficiency_score: number | null;
-  recommendations: Json;
+  recommendations: string[];
 }
 
 interface AllocationDecision {
@@ -63,7 +59,7 @@ interface AllocationDecision {
   category: string;
   ai_recommendation: string | null;
   ai_reasoning: string | null;
-  projected_impact: Json;
+  projected_impact: Record<string, number>;
   decision: string;
   decided_by: string | null;
   created_at: string;
@@ -81,7 +77,6 @@ const resourceIcons: Record<string, React.ElementType> = {
 
 export default function CapitalAllocator() {
   const { organization } = useOrganization();
-  const queryClient = useQueryClient();
   const [showNewRule, setShowNewRule] = useState(false);
   const [newRule, setNewRule] = useState({
     resource_type: 'time',
@@ -90,89 +85,37 @@ export default function CapitalAllocator() {
     rationale: ''
   });
 
-  const { data: rules = [], isLoading: rulesLoading } = useQuery({
-    queryKey: ['allocation-rules', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('capital_allocation_rules')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('priority', { ascending: true });
-      if (error) throw error;
-      return data as AllocationRule[];
-    },
-    enabled: !!organization?.id
-  });
+  // Use mock storage for non-existent tables
+  const { data: rules, addItem: addRule } = useMockStorage<AllocationRule>(`allocation_rules_${organization?.id}`);
+  const { data: snapshots } = useMockStorage<AllocationSnapshot>(`allocation_snapshots_${organization?.id}`);
+  const { data: decisions, updateItem: updateDecision } = useMockStorage<AllocationDecision>(`allocation_decisions_${organization?.id}`);
 
-  const { data: snapshots = [] } = useQuery({
-    queryKey: ['allocation-snapshots', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('capital_allocation_snapshots')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('snapshot_date', { ascending: false })
-        .limit(7);
-      if (error) throw error;
-      return data as AllocationSnapshot[];
-    },
-    enabled: !!organization?.id
-  });
+  const createRule = () => {
+    const rule: AllocationRule = {
+      id: generateMockId(),
+      resource_type: newRule.resource_type,
+      allocation_category: newRule.allocation_category,
+      min_allocation_percent: null,
+      max_allocation_percent: null,
+      target_allocation_percent: newRule.target_allocation_percent,
+      priority: rules.length + 1,
+      rationale: newRule.rationale || null,
+      is_active: true
+    };
+    addRule(rule);
+    setShowNewRule(false);
+    setNewRule({ resource_type: 'time', allocation_category: 'revenue_generation', target_allocation_percent: 30, rationale: '' });
+    toast.success('Allocation rule created');
+  };
 
-  const { data: decisions = [] } = useQuery({
-    queryKey: ['allocation-decisions', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return [];
-      const { data, error } = await supabase
-        .from('allocation_decisions')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data as AllocationDecision[];
-    },
-    enabled: !!organization?.id
-  });
-
-  const createRuleMutation = useMutation({
-    mutationFn: async (rule: typeof newRule) => {
-      if (!organization?.id) throw new Error('No organization');
-      const { error } = await supabase.from('capital_allocation_rules').insert({
-        organization_id: organization.id,
-        ...rule,
-        is_active: true,
-        priority: rules.length + 1
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allocation-rules'] });
-      setShowNewRule(false);
-      setNewRule({ resource_type: 'time', allocation_category: 'revenue_generation', target_allocation_percent: 30, rationale: '' });
-      toast.success('Allocation rule created');
-    }
-  });
-
-  const decideAllocationMutation = useMutation({
-    mutationFn: async ({ id, decision }: { id: string; decision: string }) => {
-      const { error } = await supabase
-        .from('allocation_decisions')
-        .update({ 
-          decision,
-          decided_at: new Date().toISOString(),
-          decided_by: 'user'
-        })
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allocation-decisions'] });
-      toast.success('Decision recorded');
-    }
-  });
+  const decideAllocation = (id: string, decision: string) => {
+    updateDecision(id, { 
+      decision,
+      decided_at: new Date().toISOString(),
+      decided_by: 'user'
+    });
+    toast.success('Decision recorded');
+  };
 
   const latestSnapshot = snapshots[0];
   const pendingDecisions = decisions.filter(d => d.decision === 'pending');
@@ -180,24 +123,8 @@ export default function CapitalAllocator() {
     ? snapshots.reduce((sum, s) => sum + (s.efficiency_score || 0), 0) / snapshots.length
     : 0;
 
-  const getTimeAllocation = (): Record<string, number> => {
-    if (!latestSnapshot?.time_allocation) return {};
-    if (typeof latestSnapshot.time_allocation === 'object' && !Array.isArray(latestSnapshot.time_allocation)) {
-      return latestSnapshot.time_allocation as Record<string, number>;
-    }
-    return {};
-  };
-
-  const getROIByCategory = (): Record<string, number> => {
-    if (!latestSnapshot?.roi_by_category) return {};
-    if (typeof latestSnapshot.roi_by_category === 'object' && !Array.isArray(latestSnapshot.roi_by_category)) {
-      return latestSnapshot.roi_by_category as Record<string, number>;
-    }
-    return {};
-  };
-
-  const timeAllocation = getTimeAllocation();
-  const roiByCategory = getROIByCategory();
+  const timeAllocation = latestSnapshot?.time_allocation || {};
+  const roiByCategory = latestSnapshot?.roi_by_category || {};
 
   const allocationChartData = Object.entries(timeAllocation).map(([name, value], idx) => ({
     name: name.replace('_', ' '),
@@ -211,7 +138,7 @@ export default function CapitalAllocator() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -266,7 +193,7 @@ export default function CapitalAllocator() {
                 value={newRule.rationale}
                 onChange={e => setNewRule({ ...newRule, rationale: e.target.value })}
               />
-              <Button className="w-full" onClick={() => createRuleMutation.mutate(newRule)}>
+              <Button className="w-full" onClick={createRule}>
                 Create Rule
               </Button>
             </div>
@@ -447,14 +374,14 @@ export default function CapitalAllocator() {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => decideAllocationMutation.mutate({ id: decision.id, decision: 'denied' })}
+                          onClick={() => decideAllocation(decision.id, 'denied')}
                         >
                           <XCircle className="h-4 w-4 mr-1" />
                           Deny
                         </Button>
                         <Button 
                           size="sm"
-                          onClick={() => decideAllocationMutation.mutate({ id: decision.id, decision: 'approved' })}
+                          onClick={() => decideAllocation(decision.id, 'approved')}
                         >
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Approve
@@ -469,14 +396,15 @@ export default function CapitalAllocator() {
         </TabsContent>
 
         <TabsContent value="rules" className="space-y-4">
-          {rulesLoading ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">Loading...</CardContent></Card>
-          ) : rules.length === 0 ? (
+          {rules.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="font-semibold">No allocation rules yet</h3>
+                <h3 className="font-semibold">No allocation rules</h3>
                 <p className="text-muted-foreground mt-1">Create rules to govern resource allocation</p>
+                <Button className="mt-4" onClick={() => setShowNewRule(true)}>
+                  <Plus className="h-4 w-4 mr-2" />Add Rule
+                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -487,26 +415,23 @@ export default function CapitalAllocator() {
                   <CardContent className="py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Icon className="h-5 w-5 text-primary" />
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-medium capitalize">{rule.allocation_category.replace('_', ' ')}</p>
                             <Badge variant="outline" className="capitalize">{rule.resource_type}</Badge>
+                            <Badge variant="outline">{rule.allocation_category.replace('_', ' ')}</Badge>
                           </div>
+                          <p className="font-medium mt-1">Target: {rule.target_allocation_percent}%</p>
                           {rule.rationale && (
-                            <p className="text-sm text-muted-foreground mt-1">{rule.rationale}</p>
+                            <p className="text-sm text-muted-foreground">{rule.rationale}</p>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-primary">{rule.target_allocation_percent}%</p>
-                          <p className="text-xs text-muted-foreground">target</p>
-                        </div>
-                        <Badge className={rule.is_active ? 'bg-green-500/10 text-green-500' : 'bg-muted text-muted-foreground'}>
-                          {rule.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
+                      <Badge className={rule.is_active ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}>
+                        {rule.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
                     </div>
                   </CardContent>
                 </Card>
@@ -519,9 +444,9 @@ export default function CapitalAllocator() {
           {decisions.filter(d => d.decision !== 'pending').length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <RefreshCw className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-semibold">No decision history</h3>
-                <p className="text-muted-foreground mt-1">Past decisions will appear here</p>
+                <p className="text-muted-foreground mt-1">Decisions will appear here after they're made</p>
               </CardContent>
             </Card>
           ) : (
@@ -531,16 +456,13 @@ export default function CapitalAllocator() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">{decision.request_description}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {decision.decided_at && new Date(decision.decided_at).toLocaleDateString()} • 
-                        Decided by {decision.decided_by}
+                      <p className="text-sm text-muted-foreground">
+                        {decision.decided_at ? new Date(decision.decided_at).toLocaleString() : 'N/A'}
                       </p>
                     </div>
-                    <Badge className={
-                      decision.decision === 'approved' ? 'bg-green-500/10 text-green-500' :
-                      decision.decision === 'denied' ? 'bg-red-500/10 text-red-500' :
-                      'bg-muted text-muted-foreground'
-                    }>{decision.decision}</Badge>
+                    <Badge className={decision.decision === 'approved' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}>
+                      {decision.decision}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>

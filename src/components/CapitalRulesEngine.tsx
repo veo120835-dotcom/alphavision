@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,10 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Settings, Shield, DollarSign, Clock, AlertTriangle, Plus, Trash2, CheckCircle, Lock, Unlock } from 'lucide-react';
+import { Settings, Shield, DollarSign, Plus, Lock, Unlock } from 'lucide-react';
 import { useOrganization } from '@/hooks/useOrganization';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useMockStorage, generateMockId } from '@/hooks/useMockStorage';
 
 interface CapitalContract {
   id: string;
@@ -25,7 +24,7 @@ interface CapitalContract {
   status: string;
   current_deployed: number;
   current_pnl: number;
-  auto_stop_rules: any;
+  auto_stop_rules: Record<string, number>;
   approved_at: string | null;
   expires_at: string | null;
 }
@@ -43,12 +42,13 @@ interface AllocationRule {
 }
 
 export default function CapitalRulesEngine() {
-  const [contracts, setContracts] = useState<CapitalContract[]>([]);
-  const [rules, setRules] = useState<AllocationRule[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { organization } = useOrganization();
   const [showNewContract, setShowNewContract] = useState(false);
   const [showNewRule, setShowNewRule] = useState(false);
-  const { organization } = useOrganization();
+
+  // Use mock storage for non-existent tables
+  const { data: contracts, addItem: addContract, updateItem: updateContract } = useMockStorage<CapitalContract>(`capital_contracts_${organization?.id}`);
+  const { data: rules, addItem: addRule, updateItem: updateRule, removeItem: removeRule } = useMockStorage<AllocationRule>(`capital_allocation_rules_${organization?.id}`);
 
   const [newContract, setNewContract] = useState({
     contract_type: 'lead_arbitrage',
@@ -73,141 +73,64 @@ export default function CapitalRulesEngine() {
     rationale: ''
   });
 
-  useEffect(() => {
-    if (organization?.id) fetchData();
-  }, [organization?.id]);
-
-  const fetchData = async () => {
-    try {
-      const [contractsRes, rulesRes] = await Promise.all([
-        supabase
-          .from('capital_contracts')
-          .select('*')
-          .eq('organization_id', organization!.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('capital_allocation_rules')
-          .select('*')
-          .eq('organization_id', organization!.id)
-          .order('priority', { ascending: true })
-      ]);
-
-      if (contractsRes.error) throw contractsRes.error;
-      if (rulesRes.error) throw rulesRes.error;
-
-      setContracts(contractsRes.data || []);
-      setRules(rulesRes.data || []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
+  const createContract = () => {
+    const contract: CapitalContract = {
+      id: generateMockId(),
+      contract_type: newContract.contract_type,
+      max_capital: newContract.max_capital,
+      max_loss: newContract.max_loss,
+      time_horizon_days: newContract.time_horizon_days,
+      allowed_categories: newContract.allowed_categories,
+      auto_stop_rules: newContract.auto_stop_rules,
+      status: 'pending_approval',
+      current_deployed: 0,
+      current_pnl: 0,
+      approved_at: null,
+      expires_at: null
+    };
+    addContract(contract);
+    toast.success('Contract created - awaiting approval');
+    setShowNewContract(false);
   };
 
-  const createContract = async () => {
-    try {
-      const { error } = await supabase.from('capital_contracts').insert({
-        organization_id: organization!.id,
-        contract_type: newContract.contract_type,
-        max_capital: newContract.max_capital,
-        max_loss: newContract.max_loss,
-        time_horizon_days: newContract.time_horizon_days,
-        allowed_categories: newContract.allowed_categories,
-        auto_stop_rules: newContract.auto_stop_rules,
-        status: 'pending_approval'
-      });
-
-      if (error) throw error;
-      toast.success('Contract created - awaiting approval');
-      setShowNewContract(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error creating contract:', error);
-      toast.error('Failed to create contract');
-    }
+  const approveContract = (id: string) => {
+    updateContract(id, { 
+      status: 'active', 
+      approved_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    });
+    toast.success('Contract approved');
   };
 
-  const approveContract = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('capital_contracts')
-        .update({ 
-          status: 'active', 
-          approved_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-      toast.success('Contract approved');
-      fetchData();
-    } catch (error) {
-      console.error('Error approving contract:', error);
-      toast.error('Failed to approve contract');
-    }
+  const revokeContract = (id: string) => {
+    updateContract(id, { status: 'revoked' });
+    toast.success('Contract revoked');
   };
 
-  const revokeContract = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('capital_contracts')
-        .update({ status: 'revoked' })
-        .eq('id', id);
-
-      if (error) throw error;
-      toast.success('Contract revoked');
-      fetchData();
-    } catch (error) {
-      console.error('Error revoking contract:', error);
-      toast.error('Failed to revoke contract');
-    }
+  const createRule = () => {
+    const rule: AllocationRule = {
+      id: generateMockId(),
+      resource_type: newRule.resource_type,
+      allocation_category: newRule.allocation_category,
+      min_allocation_percent: newRule.min_allocation_percent,
+      max_allocation_percent: newRule.max_allocation_percent,
+      target_allocation_percent: newRule.target_allocation_percent,
+      priority: newRule.priority,
+      is_active: true,
+      rationale: newRule.rationale
+    };
+    addRule(rule);
+    toast.success('Allocation rule created');
+    setShowNewRule(false);
   };
 
-  const createRule = async () => {
-    try {
-      const { error } = await supabase.from('capital_allocation_rules').insert({
-        organization_id: organization!.id,
-        ...newRule,
-        is_active: true
-      });
-
-      if (error) throw error;
-      toast.success('Allocation rule created');
-      setShowNewRule(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error creating rule:', error);
-      toast.error('Failed to create rule');
-    }
+  const toggleRule = (id: string, isActive: boolean) => {
+    updateRule(id, { is_active: !isActive });
   };
 
-  const toggleRule = async (id: string, isActive: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('capital_allocation_rules')
-        .update({ is_active: !isActive })
-        .eq('id', id);
-
-      if (error) throw error;
-      fetchData();
-    } catch (error) {
-      console.error('Error toggling rule:', error);
-    }
-  };
-
-  const deleteRule = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('capital_allocation_rules')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      toast.success('Rule deleted');
-      fetchData();
-    } catch (error) {
-      console.error('Error deleting rule:', error);
-    }
+  const deleteRule = (id: string) => {
+    removeRule(id);
+    toast.success('Rule deleted');
   };
 
   const stats = {
@@ -218,16 +141,8 @@ export default function CapitalRulesEngine() {
     activeRules: rules.filter(r => r.is_active).length
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -479,9 +394,9 @@ export default function CapitalRulesEngine() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="growth">Growth</SelectItem>
-                        <SelectItem value="maintenance">Maintenance</SelectItem>
-                        <SelectItem value="innovation">Innovation</SelectItem>
-                        <SelectItem value="defense">Defense</SelectItem>
+                        <SelectItem value="operations">Operations</SelectItem>
+                        <SelectItem value="marketing">Marketing</SelectItem>
+                        <SelectItem value="development">Development</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -493,6 +408,7 @@ export default function CapitalRulesEngine() {
                     onValueChange={([v]) => setNewRule({...newRule, target_allocation_percent: v})}
                     max={100}
                     step={5}
+                    className="mt-2"
                   />
                 </div>
                 <div>
@@ -503,9 +419,7 @@ export default function CapitalRulesEngine() {
                     placeholder="Why this allocation?"
                   />
                 </div>
-                <Button onClick={createRule} className="w-full">
-                  Create Rule
-                </Button>
+                <Button onClick={createRule} className="w-full">Create Rule</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -513,37 +427,39 @@ export default function CapitalRulesEngine() {
         <CardContent>
           {rules.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <Settings className="h-10 w-10 mx-auto mb-3 opacity-50" />
+              <DollarSign className="h-10 w-10 mx-auto mb-3 opacity-50" />
               <p>No allocation rules defined</p>
+              <p className="text-sm">Create rules to govern capital allocation</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {rules.map((rule) => (
                 <div 
                   key={rule.id} 
-                  className="flex items-center justify-between p-3 border rounded-lg"
+                  className="flex items-center justify-between p-4 border rounded-lg"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <div className="font-medium capitalize">
+                        {rule.resource_type} → {rule.allocation_category}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Target: {rule.target_allocation_percent}% | {rule.rationale || 'No rationale provided'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Badge variant={rule.is_active ? 'default' : 'outline'}>
+                      {rule.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
                     <Switch 
                       checked={rule.is_active} 
                       onCheckedChange={() => toggleRule(rule.id, rule.is_active)}
                     />
-                    <div>
-                      <div className="font-medium capitalize">
-                        {rule.resource_type}: {rule.allocation_category}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Target: {rule.target_allocation_percent}% | {rule.rationale || 'No rationale'}
-                      </div>
-                    </div>
+                    <Button size="sm" variant="destructive" onClick={() => deleteRule(rule.id)}>
+                      Delete
+                    </Button>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => deleteRule(rule.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
                 </div>
               ))}
             </div>
