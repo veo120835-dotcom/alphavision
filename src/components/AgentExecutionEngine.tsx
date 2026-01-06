@@ -127,13 +127,13 @@ export function AgentExecutionEngine() {
     
     try {
       const [logsRes, tasksRes] = await Promise.all([
-        supabase
+        (supabase as any)
           .from('agent_execution_logs')
           .select('*')
           .eq('organization_id', organization.id)
           .order('executed_at', { ascending: false })
           .limit(100),
-        supabase
+        (supabase as any)
           .from('execution_tasks')
           .select('*')
           .eq('organization_id', organization.id)
@@ -143,7 +143,7 @@ export function AgentExecutionEngine() {
       ]);
 
       if (logsRes.data) setExecutionLogs(logsRes.data);
-      if (tasksRes.data) setTaskQueue(tasksRes.data as ExecutionTask[]);
+      if (tasksRes.data) setTaskQueue(tasksRes.data as unknown as ExecutionTask[]);
       
     } catch (error) {
       console.error('Error fetching data:', error);

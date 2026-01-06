@@ -258,18 +258,13 @@ export function APIKeysManager() {
     fetchStoredKeys();
   }, [organization?.id]);
 
-  const fetchStoredKeys = async () => {
+  const fetchStoredKeys = () => {
     setLoading(true);
     try {
-      // In production, you'd fetch from a secure secrets store
-      // For now, we simulate by checking integrations table
       if (organization?.id) {
-        const { data } = await supabase
-          .from('integrations')
-          .select('*')
-          .eq('organization_id', organization.id);
-
-        const configured = new Set(data?.map(i => i.provider) || []);
+        const stored = localStorage.getItem(`integrations_${organization.id}`);
+        const data = stored ? JSON.parse(stored) : [];
+        const configured = new Set(data.map((i: any) => i.provider));
         
         setStoredKeys(API_KEYS.map(k => ({
           id: k.id,
@@ -292,26 +287,26 @@ export function APIKeysManager() {
     setDialogOpen(true);
   };
 
-  const handleSaveKey = async () => {
+  const handleSaveKey = () => {
     if (!selectedKey || !keyValue.trim() || !organization?.id) return;
 
     setSaving(true);
     try {
-      // Store in integrations table (credentials_encrypted)
-      const existing = storedKeys.find(k => k.id === selectedKey.id);
+      const stored = localStorage.getItem(`integrations_${organization.id}`);
+      const data = stored ? JSON.parse(stored) : [];
       
-      if (existing?.isConfigured) {
-        await supabase
-          .from('integrations')
-          .update({
-            credentials_encrypted: JSON.stringify({ [selectedKey.envKey]: keyValue }),
-            status: 'connected',
-            updated_at: new Date().toISOString()
-          })
-          .eq('organization_id', organization.id)
-          .eq('provider', selectedKey.id);
+      const existingIdx = data.findIndex((i: any) => i.provider === selectedKey.id);
+      
+      if (existingIdx >= 0) {
+        data[existingIdx] = {
+          ...data[existingIdx],
+          credentials_encrypted: JSON.stringify({ [selectedKey.envKey]: keyValue }),
+          status: 'connected',
+          updated_at: new Date().toISOString()
+        };
       } else {
-        await supabase.from('integrations').insert({
+        data.push({
+          id: crypto.randomUUID(),
           organization_id: organization.id,
           provider: selectedKey.id,
           credentials_encrypted: JSON.stringify({ [selectedKey.envKey]: keyValue }),
@@ -320,6 +315,7 @@ export function APIKeysManager() {
         });
       }
 
+      localStorage.setItem(`integrations_${organization.id}`, JSON.stringify(data));
       toast.success(`${selectedKey.name} key saved successfully`);
       setDialogOpen(false);
       fetchStoredKeys();
@@ -334,21 +330,21 @@ export function APIKeysManager() {
   const testKey = async (keyConfig: APIKeyConfig) => {
     setTesting(keyConfig.id);
     
-    // Simulate testing - in production, call a test endpoint
+    // Simulate testing
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     toast.success(`${keyConfig.name} connection verified`);
     setTesting(null);
   };
 
-  const deleteKey = async (keyConfig: APIKeyConfig) => {
+  const deleteKey = (keyConfig: APIKeyConfig) => {
     if (!organization?.id) return;
 
-    await supabase
-      .from('integrations')
-      .delete()
-      .eq('organization_id', organization.id)
-      .eq('provider', keyConfig.id);
+    const stored = localStorage.getItem(`integrations_${organization.id}`);
+    if (stored) {
+      const data = JSON.parse(stored).filter((i: any) => i.provider !== keyConfig.id);
+      localStorage.setItem(`integrations_${organization.id}`, JSON.stringify(data));
+    }
     
     toast.success(`${keyConfig.name} key removed`);
     fetchStoredKeys();
