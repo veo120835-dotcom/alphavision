@@ -1,5 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,33 +6,47 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
-serve(async (req) => {
+const PLATFORM_FEE_RATE = 0.10;
+
+interface CreateOfferRequest {
+  leadId: string;
+  contactId?: string;
+  title: string;
+  description?: string;
+  askingPrice: number;
+  minimumPrice?: number;
+  currency?: string;
+  industry?: string;
+  location?: string;
+  qualityGuarantees?: string[];
+  expiresInDays?: number;
+}
+
+interface CreateBidRequest {
+  offerId: string;
+  bidAmount: number;
+  message?: string;
+}
+
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw new Error('Missing authorization header');
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user } } = await supabase.auth.getUser(token);
-
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      throw new Error('Unauthorized');
     }
 
     const { data: membership } = await supabase
@@ -42,301 +55,267 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (!membership?.organization_id) {
+    if (!membership) {
+      throw new Error('No organization found');
+    }
+
+    const url = new URL(req.url);
+    const path = url.pathname.split('/').filter(p => p).pop();
+
+    if (path === 'list-offers' && req.method === 'GET') {
+      const params = url.searchParams;
+      const status = params.get('status') || 'active';
+      const industry = params.get('industry');
+      const minScore = params.get('minScore');
+      
+      let query = supabase
+        .from('marketplace_offers')
+        .select('*')
+        .eq('status', status)
+        .order('created_at', { ascending: false });
+
+      if (industry) {
+        query = query.eq('industry', industry);
+      }
+
+      if (minScore) {
+        query = query.gte('lead_quality_score', parseInt(minScore));
+      }
+
+      const { data: offers, error } = await query;
+      if (error) throw error;
+
       return new Response(
-        JSON.stringify({ error: 'No organization found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, offers }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const orgId = membership.organization_id;
-    const url = new URL(req.url);
-    const path = url.pathname;
-
-    if (req.method === 'POST' && path.endsWith('/listings')) {
-      const { lead_id, price, description, target_industries, target_locations } = await req.json();
+    if (path === 'create-offer' && req.method === 'POST') {
+      const body: CreateOfferRequest = await req.json();
+      
+      const expiresAt = body.expiresInDays
+        ? new Date(Date.now() + body.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+        : null;
 
       const { data: lead } = await supabase
         .from('leads')
         .select('*')
-        .eq('id', lead_id)
-        .eq('organization_id', orgId)
+        .eq('id', body.leadId)
+        .eq('organization_id', membership.organization_id)
         .maybeSingle();
 
       if (!lead) {
-        return new Response(
-          JSON.stringify({ error: 'Lead not found' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        throw new Error('Lead not found or access denied');
       }
 
-      const { data: listing, error: listingError } = await supabase
-        .from('lead_listings')
+      const leadAgeDays = Math.floor(
+        (Date.now() - new Date(lead.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const { data: offer, error } = await supabase
+        .from('marketplace_offers')
         .insert({
-          organization_id: orgId,
-          lead_id: lead_id,
-          price: price,
-          currency: 'USD',
+          seller_org_id: membership.organization_id,
+          lead_id: body.leadId,
+          contact_id: body.contactId || null,
+          title: body.title,
+          description: body.description,
+          asking_price: body.askingPrice,
+          minimum_price: body.minimumPrice || body.askingPrice * 0.8,
+          currency: body.currency || 'USD',
+          industry: body.industry || lead.company,
+          location: body.location,
+          lead_age_days: leadAgeDays,
+          quality_guarantees: body.qualityGuarantees || [],
           status: 'active',
-          description: description || `Quality lead: ${lead.company || lead.name}`,
-          metadata: {
-            lead_source: lead.source,
-            lead_status: lead.status,
-            lead_value: lead.value,
-            target_industries,
-            target_locations,
-            listed_at: new Date().toISOString()
-          }
+          expires_at: expiresAt,
         })
         .select()
-        .maybeSingle();
+        .single();
 
-      if (listingError) throw listingError;
-
-      await supabase
-        .from('leads')
-        .update({ status: 'listed_marketplace' })
-        .eq('id', lead_id);
+      if (error) throw error;
 
       return new Response(
-        JSON.stringify({ listing }),
-        { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, offer }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (req.method === 'POST' && path.includes('/purchase')) {
-      const listingId = path.split('/').pop();
-      const { payment_method_id } = await req.json();
-
-      const { data: listing } = await supabase
-        .from('lead_listings')
-        .select('*, lead:leads(*), seller:organizations(id, name)')
-        .eq('id', listingId)
+    if (path === 'create-bid' && req.method === 'POST') {
+      const body: CreateBidRequest = await req.json();
+      
+      const { data: offer } = await supabase
+        .from('marketplace_offers')
+        .select('*')
+        .eq('id', body.offerId)
         .eq('status', 'active')
         .maybeSingle();
 
-      if (!listing) {
-        return new Response(
-          JSON.stringify({ error: 'Listing not found or not available' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (!offer) {
+        throw new Error('Offer not found or no longer active');
       }
 
-      if (listing.organization_id === orgId) {
-        return new Response(
-          JSON.stringify({ error: 'Cannot purchase your own listing' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (offer.seller_org_id === membership.organization_id) {
+        throw new Error('Cannot bid on your own offer');
       }
 
-      const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
-      if (!stripeSecret) {
-        return new Response(
-          JSON.stringify({ error: 'Payment processing not configured' }),
-          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (offer.minimum_price && body.bidAmount < offer.minimum_price) {
+        throw new Error(`Bid must be at least ${offer.minimum_price} ${offer.currency}`);
       }
 
-      const platformFeePercentage = 0.15;
-      const totalAmount = Math.round(listing.price * 100);
-      const platformFee = Math.round(totalAmount * platformFeePercentage);
-      const sellerAmount = totalAmount - platformFee;
-
-      const stripeResponse = await fetch('https://api.stripe.com/v1/payment_intents', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${stripeSecret}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          'amount': totalAmount.toString(),
-          'currency': 'usd',
-          'payment_method': payment_method_id,
-          'confirm': 'true',
-          'description': `Lead purchase from ${listing.seller.name}`,
-          'metadata[listing_id]': listing.id,
-          'metadata[lead_id]': listing.lead_id,
-          'metadata[buyer_org_id]': orgId,
-          'metadata[seller_org_id]': listing.organization_id,
-          'application_fee_amount': platformFee.toString(),
-        }),
-      });
-
-      const paymentIntent = await stripeResponse.json();
-
-      if (!stripeResponse.ok || paymentIntent.status !== 'succeeded') {
-        return new Response(
-          JSON.stringify({
-            error: 'Payment failed',
-            details: paymentIntent.error || paymentIntent
-          }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const { data: transaction, error: txError } = await supabase
-        .from('marketplace_transactions')
+      const { data: bid, error } = await supabase
+        .from('marketplace_bids')
         .insert({
-          listing_id: listing.id,
-          buyer_org_id: orgId,
-          seller_org_id: listing.organization_id,
-          lead_id: listing.lead_id,
-          price: listing.price,
-          currency: 'USD',
-          platform_fee: platformFee / 100,
-          seller_payout: sellerAmount / 100,
-          payment_intent_id: paymentIntent.id,
-          status: 'completed',
-          completed_at: new Date().toISOString(),
+          offer_id: body.offerId,
+          bidder_org_id: membership.organization_id,
+          bidder_user_id: user.id,
+          bid_amount: body.bidAmount,
+          currency: offer.currency,
+          status: 'pending',
+          message: body.message,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         })
         .select()
-        .maybeSingle();
+        .single();
 
-      if (txError) throw txError;
+      if (error) throw error;
 
       await supabase
-        .from('lead_listings')
-        .update({
-          status: 'sold',
-          buyer_org_id: orgId,
-          sold_at: new Date().toISOString()
-        })
-        .eq('id', listing.id);
+        .from('marketplace_offers')
+        .update({ bids_count: offer.bids_count + 1 })
+        .eq('id', body.offerId);
 
-      const { data: newLead, error: leadError } = await supabase
-        .from('leads')
+      await supabase
+        .from('notifications')
         .insert({
-          organization_id: orgId,
-          name: listing.lead.name,
-          email: listing.lead.email,
-          phone: listing.lead.phone,
-          company: listing.lead.company,
-          title: listing.lead.title,
-          status: 'new',
-          source: 'marketplace_purchase',
-          value: listing.lead.value,
-          notes: `Purchased from marketplace. Original source: ${listing.lead.source}`,
-          metadata: {
-            marketplace_listing_id: listing.id,
-            marketplace_transaction_id: transaction.id,
-            original_seller_org_id: listing.organization_id,
-            purchase_price: listing.price,
-            purchased_at: new Date().toISOString()
-          }
-        })
-        .select()
-        .maybeSingle();
-
-      if (leadError) throw leadError;
-
-      await supabase
-        .from('revenue_events')
-        .insert([
-          {
-            organization_id: listing.organization_id,
-            type: 'marketplace_sale',
-            amount: sellerAmount / 100,
-            currency: 'USD',
-            status: 'completed',
-            source: 'lead_marketplace',
-            metadata: {
-              transaction_id: transaction.id,
-              listing_id: listing.id,
-              buyer_org_id: orgId,
-              platform_fee: platformFee / 100
-            }
-          },
-          {
-            organization_id: orgId,
-            type: 'marketplace_purchase',
-            amount: -listing.price,
-            currency: 'USD',
-            status: 'completed',
-            source: 'lead_marketplace',
-            metadata: {
-              transaction_id: transaction.id,
-              listing_id: listing.id,
-              seller_org_id: listing.organization_id
-            }
-          }
-        ]);
+          organization_id: offer.seller_org_id,
+          type: 'marketplace_bid',
+          title: 'New Bid Received',
+          message: `New bid of ${body.bidAmount} ${offer.currency} on "${offer.title}"`,
+          severity: 'info',
+          metadata: { offerId: body.offerId, bidId: bid.id },
+        });
 
       return new Response(
-        JSON.stringify({
-          success: true,
-          transaction,
-          new_lead: newLead,
-          payment_intent: paymentIntent.id,
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, bid }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (req.method === 'GET') {
-      const action = url.searchParams.get('action');
+    if (path === 'accept-bid' && req.method === 'POST') {
+      const { bidId } = await req.json();
+      
+      const { data: bid } = await supabase
+        .from('marketplace_bids')
+        .select('*, marketplace_offers(*)')
+        .eq('id', bidId)
+        .maybeSingle();
 
-      if (action === 'browse') {
-        const industry = url.searchParams.get('industry');
-        const maxPrice = url.searchParams.get('max_price');
-        const minQuality = url.searchParams.get('min_quality');
-
-        let query = supabase
-          .from('lead_listings')
-          .select('*, lead:leads(*), seller:organizations(name)')
-          .eq('status', 'active')
-          .neq('organization_id', orgId);
-
-        if (maxPrice) {
-          query = query.lte('price', parseFloat(maxPrice));
-        }
-
-        const { data: listings } = await query.order('created_at', { ascending: false });
-
-        return new Response(
-          JSON.stringify({ listings }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (!bid || bid.marketplace_offers.seller_org_id !== membership.organization_id) {
+        throw new Error('Bid not found or access denied');
       }
 
-      if (action === 'my-listings') {
-        const { data: listings } = await supabase
-          .from('lead_listings')
-          .select('*, lead:leads(*)')
-          .eq('organization_id', orgId)
-          .order('created_at', { ascending: false });
+      const platformFee = bid.bid_amount * PLATFORM_FEE_RATE;
+      const sellerPayout = bid.bid_amount - platformFee;
 
-        return new Response(
-          JSON.stringify({ listings }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      const { data: transfer, error: transferError } = await supabase
+        .from('lead_transfers')
+        .insert({
+          offer_id: bid.offer_id,
+          seller_org_id: bid.marketplace_offers.seller_org_id,
+          buyer_org_id: bid.bidder_org_id,
+          lead_id: bid.marketplace_offers.lead_id,
+          contact_id: bid.marketplace_offers.contact_id,
+          sale_price: bid.bid_amount,
+          currency: bid.currency,
+          platform_fee: platformFee,
+          seller_payout: sellerPayout,
+          status: 'pending',
+        })
+        .select()
+        .single();
 
-      if (action === 'transactions') {
-        const { data: purchases } = await supabase
-          .from('marketplace_transactions')
-          .select('*, listing:lead_listings(*), lead:leads(*)')
-          .eq('buyer_org_id', orgId);
+      if (transferError) throw transferError;
 
-        const { data: sales } = await supabase
-          .from('marketplace_transactions')
-          .select('*, listing:lead_listings(*), lead:leads(*)')
-          .eq('seller_org_id', orgId);
+      await supabase
+        .from('marketplace_bids')
+        .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+        .eq('id', bidId);
 
-        return new Response(
-          JSON.stringify({ purchases, sales }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      await supabase
+        .from('marketplace_offers')
+        .update({ 
+          status: 'sold', 
+          sold_at: new Date().toISOString(),
+          buyer_org_id: bid.bidder_org_id,
+          final_price: bid.bid_amount,
+        })
+        .eq('id', bid.offer_id);
+
+      await supabase
+        .from('marketplace_bids')
+        .update({ status: 'rejected' })
+        .eq('offer_id', bid.offer_id)
+        .neq('id', bidId);
+
+      await supabase
+        .from('revenue_events')
+        .insert({
+          organization_id: membership.organization_id,
+          event_type: 'lead_sold',
+          amount: sellerPayout,
+          currency: bid.currency,
+          source_type: 'marketplace',
+          source_id: transfer.id,
+          lead_id: bid.marketplace_offers.lead_id,
+        });
+
+      return new Response(
+        JSON.stringify({ success: true, transfer }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (path === 'my-offers' && req.method === 'GET') {
+      const { data: offers, error } = await supabase
+        .from('marketplace_offers')
+        .select('*')
+        .eq('seller_org_id', membership.organization_id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true, offers }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (path === 'my-bids' && req.method === 'GET') {
+      const { data: bids, error } = await supabase
+        .from('marketplace_bids')
+        .select('*, marketplace_offers(*)')
+        .eq('bidder_org_id', membership.organization_id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true, bids }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid request' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Invalid endpoint' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (error) {
     console.error('Lead marketplace error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
