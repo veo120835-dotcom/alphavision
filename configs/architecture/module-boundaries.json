@@ -1,0 +1,24 @@
+{
+  "activeModules": [
+    "business-os",
+    "finance-os",
+    "concierge-os"
+  ],
+  "deprecatedModules": [
+    "advisory-os",
+    "health-os",
+    "wearable-os",
+    "va"
+  ],
+  "rules": {
+    "modulesCannotImportOtherModules": true,
+    "modulesCannotExecuteToolsDirectly": true,
+    "allToolsMustGoThroughToolExecutor": true,
+    "modulesCommunicateViaEventsOnly": true
+  },
+  "enforcement": {
+    "buildTimeBoundaryChecks": true,
+    "scriptPath": "scripts/check-boundaries.ts",
+    "failBuildOnViolation": true
+  }
+}

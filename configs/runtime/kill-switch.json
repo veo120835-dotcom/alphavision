@@ -1,0 +1,20 @@
+{
+  "global": {
+    "enabled": true,
+    "canDisable": false
+  },
+  "domain": {
+    "business-os": {
+      "enabled": true,
+      "canPause": true
+    },
+    "finance-os": {
+      "enabled": true,
+      "canPause": true
+    },
+    "concierge-os": {
+      "enabled": true,
+      "canPause": true
+    }
+  }
+}
