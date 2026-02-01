@@ -1,0 +1,49 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+
+    /* Path Mappings */
+    "baseUrl": ".",
+    "paths": {
+      "@alphavision/kernel": ["packages/kernel/src"],
+      "@alphavision/tool-definitions": ["packages/tool-definitions/src"],
+      "@alphavision/contracts": ["packages/contracts/src"],
+      "@alphavision/events": ["packages/events/src"],
+      "@alphavision/audit-ledger": ["packages/audit-ledger/src"],
+      "@alphavision/policy-engine": ["packages/policy-engine/src"],
+      "@alphavision/observability": ["packages/observability/src"],
+      "@alphavision/simulation-kit": ["packages/simulation-kit/src"],
+      "@alphavision/memory-palace": ["packages/memory-palace/src"],
+      "@alphavision/ai-safety": ["packages/ai-safety/src"],
+      "@alphavision/auth-sdk": ["packages/auth-sdk/src"],
+      "@alphavision/signing-runtime": ["packages/signing-runtime/src"],
+      "@alphavision/neuro-adaptive": ["packages/neuro-adaptive/src"],
+      "@alphavision/ui": ["packages/ui/src"],
+      "@alphavision/product-analytics": ["packages/product-analytics/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build", ".next"]
+}
