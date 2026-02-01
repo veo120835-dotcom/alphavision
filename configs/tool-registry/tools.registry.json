@@ -1,0 +1,30 @@
+{
+  "tools": {
+    "send-email": {
+      "id": "send-email",
+      "name": "Send Email",
+      "category": "communication",
+      "riskTier": 1,
+      "rateLimits": {
+        "perMinute": 10,
+        "perHour": 100,
+        "perDay": 1000
+      },
+      "canRollback": false,
+      "requiresEpistemicEntry": false
+    },
+    "process-payment": {
+      "id": "process-payment",
+      "name": "Process Payment",
+      "category": "payment",
+      "riskTier": 4,
+      "rateLimits": {
+        "perMinute": 5,
+        "perHour": 50,
+        "perDay": 200
+      },
+      "canRollback": true,
+      "requiresEpistemicEntry": true
+    }
+  }
+}

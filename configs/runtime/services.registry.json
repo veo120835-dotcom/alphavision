@@ -1,0 +1,19 @@
+{
+  "canonicalServices": {
+    "tool-executor": {
+      "path": "services/tool-executor",
+      "description": "The ONLY service that executes tools",
+      "critical": true
+    },
+    "policy-engine": {
+      "path": "services/policy-engine",
+      "description": "Policy decision point (PDP)",
+      "critical": true
+    },
+    "evidence-registry": {
+      "path": "services/evidence-registry",
+      "description": "Evidence capture and verification",
+      "critical": true
+    }
+  }
+}
